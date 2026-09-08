@@ -1,0 +1,14 @@
+/* App-owned motion remains responsive regardless of the Windows animation setting. */
+:root{--motion-fast:140ms;--motion-ease:cubic-bezier(.2,.8,.2,1)}
+.modal,.modal-backdrop,.toast{animation:none}
+.toggle>span{transition:none}
+.button,.icon-button,.tiny-button,.duration-shortcuts button,.theme-options button,.motion-options button,.empty-lane{transition:transform var(--motion-fast) var(--motion-ease),opacity var(--motion-fast) linear}
+.icon-button:active:not(:disabled),.tiny-button:active:not(:disabled),.duration-shortcuts button:active,.theme-options button:active,.motion-options button:active{transform:scale(.94)}
+.empty-lane:hover{transform:translateY(-1px)}
+.atmosphere-option{transition:none}
+.inspector>div>.button.danger{margin:20px 19px}
+.motion-options{display:flex;gap:8px;margin-top:14px}
+.motion-options button{flex:1;padding:11px 14px;border:1px solid var(--border);border-radius:9px;font-size:12px}
+.motion-options button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+:root[data-motion=reduced] *, :root[data-motion=reduced] *::before, :root[data-motion=reduced] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+:root[data-motion=reduced] button:active,:root[data-motion=reduced] .empty-lane:hover,:root[data-motion=reduced] .preset-card:hover{transform:none}

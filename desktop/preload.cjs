@@ -1,0 +1,27 @@
+const {contextBridge,ipcRenderer}=require('electron');
+contextBridge.exposeInMainWorld('auralith',{
+ updateStatus:()=>ipcRenderer.invoke('updates:status'),
+ setUpdateChecks:value=>ipcRenderer.invoke('updates:enabled',value),
+ checkUpdates:()=>ipcRenderer.invoke('updates:check'),
+ downloadUpdate:()=>ipcRenderer.invoke('updates:download'),
+ installUpdate:()=>ipcRenderer.invoke('updates:install'),
+ onUpdateStatus:callback=>{const listener=(_event,data)=>callback(data);ipcRenderer.on('updates:status',listener);return()=>ipcRenderer.removeListener('updates:status',listener);},
+ openSupport:url=>ipcRenderer.invoke('support:open',url),
+ bootstrap:()=>ipcRenderer.invoke('app:bootstrap'),
+ setLanguage:language=>ipcRenderer.invoke('app:language',language),
+ saveProject:project=>ipcRenderer.invoke('project:save',project),
+ removeAsset:id=>ipcRenderer.invoke('audio:remove',id),
+ importAudio:()=>ipcRenderer.invoke('audio:import'),
+ importText:()=>ipcRenderer.invoke('text:import'),
+ importProject:()=>ipcRenderer.invoke('project:import'),
+ exportProject:project=>ipcRenderer.invoke('project:export',project),
+ synthesize:request=>ipcRenderer.invoke('audio:synthesize',request),
+ saveRecording:request=>ipcRenderer.invoke('audio:recording',request),
+ render:request=>ipcRenderer.invoke('audio:render',request),
+ cancelRender:()=>ipcRenderer.invoke('audio:cancel'),
+ onProgress:callback=>{const listener=(_event,data)=>callback(data);ipcRenderer.on('audio:progress',listener);return()=>ipcRenderer.removeListener('audio:progress',listener);},
+ reveal:path=>ipcRenderer.invoke('file:reveal',path),
+ exportFile:path=>ipcRenderer.invoke('file:export',path),
+ windowControl:action=>ipcRenderer.send('window:control',action),
+ onCloseRequested:callback=>{const listener=()=>callback();ipcRenderer.on('app:close-request',listener);return()=>ipcRenderer.removeListener('app:close-request',listener);}
+});

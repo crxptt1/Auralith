@@ -1,0 +1,61 @@
+Auralith Source-Available License 1.0
+
+Copyright (c) 2026 piotrkolodz. All rights reserved except as expressly granted below.
+
+1. Scope
+This license applies to the original Auralith Studio source code, documentation,
+and assets supplied with this license (the "Software"). It does not apply to
+third-party components, which remain subject to their respective licenses.
+
+2. Permitted use
+You may view and study the Software, download a copy, build it, and run it for
+your own use without charge. You may modify it solely for your own private use.
+These permissions apply to personal use and internal use within an organization.
+You may make private backup copies. Keep this license and copyright notices.
+Your own affirmation text, recordings, projects, and exported audio are not
+licensed under this license merely because you create them using the Software.
+
+3. Distribution and public modifications
+Except as provided in section 4, you must obtain prior written permission from
+piotrkolodz before publishing, distributing, sublicensing, selling, or otherwise
+making the Software or any modified version available to third parties. This
+includes modified source code, public patches, repackaged applications, binaries,
+and derivative products containing the Software. Linking to the official
+repository or official release downloads is permitted.
+
+4. GitHub platform permissions
+Nothing in this license limits permissions granted under GitHub's Terms of
+Service for content hosted there, including viewing and making repository copies
+through GitHub's fork functionality. Such platform permissions do not, by this
+license, grant permission to publish modified versions, distribute independent
+releases, or use the Software beyond the permissions stated above. Where the
+platform terms grant a permission, those terms are not overridden by this license.
+
+5. Names and attribution
+No permission is granted to imply endorsement by the author or to use the
+Auralith name or branding for an unofficial product. No trademark rights are
+granted by this license.
+
+6. Earlier licenses and third-party rights
+This license does not revoke or restrict rights already granted for copies
+previously supplied under another license, including MIT. It does not replace,
+restrict, or remove rights and obligations under licenses of third-party code,
+FFmpeg, libraries, or other bundled components. See THIRD_PARTY_NOTICES.md.
+
+7. Permission requests
+Request written permission from the repository owner at
+https://github.com/crxptt1/Auralith before distributing a modified version.
+Absence of a reply is not permission. No other rights are granted by implication.
+
+8. Termination
+Permissions under this license terminate if you fail to comply with its terms.
+This does not affect independently granted third-party or earlier-license rights.
+
+9. Disclaimer
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, AND NONINFRINGEMENT. TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE
+AUTHOR SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING
+FROM THE SOFTWARE OR ITS USE.
+
+This is a custom source-available license, not an OSI-approved open-source license.
