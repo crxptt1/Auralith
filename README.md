@@ -51,14 +51,14 @@ c) I imagine finishing the conversation feeling at ease.
 
 `A` = Identity · `B` = Intention · `C` = Imagination. Named sections and Markdown lists also work; the import help popup shows examples.
 
-<details>
-<summary><strong>See the export report</strong></summary>
+## Prefer a darker interface?
 
-![Loudness, peak and format checks for a finished export](docs/screenshots/export.png)
+Switch to **Focus** in Settings for dark, opaque surfaces. Here is the export screen in Focus (screenshot from version 2.0).
 
-These are audio-quality measurements, not measurements of affirmation effectiveness.
+![Auralith export screen in the dark Focus theme](docs/screenshots/export.png)
 
-</details>
+The export report checks audio quality, not affirmation effectiveness.
+
 
 ## Local projects, clear dependencies
 
