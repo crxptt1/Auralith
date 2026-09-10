@@ -10,7 +10,7 @@ export const templateLines = {
 };
 export function createProject(name = t("Nowa sesja"), mode = 'classic') {
     const now = new Date().toISOString();
-    return { schemaVersion: 2, id: uid(), name, mode, createdAt: now, updatedAt: now, script: templateLines[mode].map(([role, text]) => ({ id: uid(), role, text: t(text) })), layers: [], duration: 180, variant: 'LOW', targetLufs: -18, background: { kind: (mode === 'spell' || mode === 'forced-spell') ? 'pink' : 'brown', gainDb: -18 }, pulse: { enabled: false, hz: 6, depth: 0.2 }, exports: [] };
+    return { schemaVersion: 2, id: uid(), name, mode, createdAt: now, updatedAt: now, script: templateLines[mode].map(([role, text]) => ({ id: uid(), role, text: t(text) })), layers: [], duration: 180, variant: 'LOW', targetLufs: -24, background: { kind: (mode === 'spell' || mode === 'forced-spell') ? 'pink' : 'brown', gainDb: -18 }, pulse: { enabled: false, hz: 6, depth: 0.2 }, exports: [] };
 }
 export function applyMode(p, mode) { return { ...p, mode }; }
 export function duplicateProject(p) { const now = new Date().toISOString(); return { ...structuredClone(p), id: uid(), name: t("{0} · kopia", [p.name.slice(0, 185)]), createdAt: now, updatedAt: now, exports: [], comparisons: [], script: p.script.map(l => ({ ...l, id: uid() })), layers: p.layers.map(l => ({ ...l, id: uid() })) }; }
@@ -104,13 +104,23 @@ export function validateProject(input) {
     textIn(p.name, 200, t("nazwa"));
     if (!p.name.trim())
         throw new Error(t("Nadaj projektowi nazwę."));
-    if (!['classic', 'forced', 'spell', 'forced-spell'].includes(p.mode) || !['CLEAR', 'LOW', 'MASKED', 'CONTROL'].includes(p.variant))
+    if (!['classic', 'forced', 'spell', 'forced-spell'].includes(p.mode) || !['CLEAR', 'LOW', 'MASKED', 'DEEP', 'CONTROL'].includes(p.variant))
         throw new Error(t("Nieprawidłowy tryb projektu."));
     numberIn(p.duration, 5, 3600, t("czas"));
-    numberIn(p.targetLufs, -24, -14, t("głośność"));
+    numberIn(p.targetLufs, -36, -14, t("głośność"));
     if (!p.background || !['brown', 'pink', 'none', 'file'].includes(p.background.kind))
         throw new Error(t("Nieprawidłowe tło."));
     numberIn(p.background.gainDb, -60, 0, t("poziom tła"));
+    for (const [key, min, max] of [['highpassHz', 20, 2000], ['lowpassHz', 1000, 20000], ['fadeIn', 0, 10], ['fadeOut', 0, 10], ['pan', -1, 1], ['speed', .5, 2]]) {
+        const value = p.background[key];
+        if (value !== undefined)
+            numberIn(value, min, max, key);
+    }
+    for (const key of ['muted', 'solo', 'reverse'])
+        if (p.background[key] !== undefined && typeof p.background[key] !== 'boolean')
+            throw new Error(t('Nieprawidłowe tło.'));
+    if ((p.background.highpassHz ?? 55) >= (p.background.lowpassHz ?? 10000))
+        throw new Error(t('Nieprawidłowe tło.'));
     if (!p.pulse || typeof p.pulse.enabled !== 'boolean')
         throw new Error(t("Nieprawidłowa modulacja."));
     numberIn(p.pulse.hz, 1, 30, t("puls"));
@@ -172,7 +182,7 @@ export function validateProject(input) {
         textIn(r.path, 2000, t("plik eksportu"));
         textIn(r.url, 2500, t("adres eksportu"));
         numberIn(r.duration, 0, 3600, t("długość eksportu"));
-        if (!['wav', 'mp3', 'flac'].includes(r.format) || !['CLEAR', 'LOW', 'MASKED', 'CONTROL'].includes(r.variant) || !r.metrics)
+        if (!['wav', 'mp3', 'flac'].includes(r.format) || !['CLEAR', 'LOW', 'MASKED', 'DEEP', 'CONTROL'].includes(r.variant) || !r.metrics)
             throw new Error(t("Nieprawidłowy eksport."));
         for (const v of [r.metrics.integratedLufs, r.metrics.truePeakDbtp, r.metrics.correlation])
             if (v !== null && (typeof v !== 'number' || !Number.isFinite(v)))
@@ -202,7 +212,7 @@ export function migrateProject(input) {
     if (typeof mix.durationS === 'number')
         p.duration = Math.max(5, Math.min(3600, mix.durationS));
     if (typeof mix.targetLufs === 'number')
-        p.targetLufs = Math.max(-24, Math.min(-14, mix.targetLufs));
+        p.targetLufs = Math.max(-36, Math.min(-14, mix.targetLufs));
     return validateProject(p);
 }
 export function layerFromAsset(a, role = 'A') { return { id: uid(), assetId: a.id, name: a.name, path: a.path, url: a.url, peaks: a.peaks, duration: a.duration, role, gainDb: 0, pan: role === 'A' ? 0 : role === 'B' ? -0.18 : 0.18, speed: 1, reverse: false, offset: 0, muted: false, solo: false }; }

@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('auralith',{
  bootstrap:()=>ipcRenderer.invoke('app:bootstrap'),
  setLanguage:language=>ipcRenderer.invoke('app:language',language),
  saveProject:project=>ipcRenderer.invoke('project:save',project),
+ removeExport:request=>ipcRenderer.invoke('export:remove',request),
  removeAsset:id=>ipcRenderer.invoke('audio:remove',id),
  importAudio:()=>ipcRenderer.invoke('audio:import'),
  importText:()=>ipcRenderer.invoke('text:import'),

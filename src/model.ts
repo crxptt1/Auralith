@@ -1,7 +1,7 @@
 import {t, tMessage, getLocale} from './i18n.js';
 export type Mode = 'classic' | 'forced' | 'spell' | 'forced-spell';
 export type Role = 'A' | 'B' | 'C';
-export type Variant = 'CLEAR' | 'LOW' | 'MASKED' | 'CONTROL';
+export type Variant = 'CLEAR' | 'LOW' | 'MASKED' | 'DEEP' | 'CONTROL';
 export type Format = 'wav' | 'flac' | 'mp3';
 export type Screen = 'projects' | 'script' | 'voices' | 'studio' | 'exports';
 export interface Line {id:string; text:string; role:Role}
@@ -10,7 +10,7 @@ export interface Layer {id:string;assetId:string;name:string;path:string;url:str
 export interface Check {label:string;status:'pass'|'warn'|'fail';detail:string}
 export interface RenderResult {id:string;path:string;url:string;duration:number;variant:Variant;format:Format;createdAt:string;metrics:{integratedLufs:number|null;truePeakDbtp:number|null;sampleRate:number;channels:number;bits:number;clipping:boolean|null;correlation:number|null;monoLossDb?:number|null;voiceBackgroundDb?:number|null};checks:Check[]}
 export interface ComparisonResult {id:string;createdAt:string;firstId:string;secondId:string;firstVotes:number;secondVotes:number;ties:number}
-export interface Project {notes?:string;musicCredit?:string;comparisons?:ComparisonResult[];schemaVersion:2;id:string;name:string;mode:Mode;createdAt:string;updatedAt:string;script:Line[];layers:Layer[];duration:number;variant:Variant;targetLufs:number;background:{kind:'brown'|'pink'|'none'|'file';path?:string;name?:string;gainDb:number};pulse:{enabled:boolean;hz:number;depth:number};exports:RenderResult[]}
+export interface Project {notes?:string;musicCredit?:string;comparisons?:ComparisonResult[];schemaVersion:2;id:string;name:string;mode:Mode;createdAt:string;updatedAt:string;script:Line[];layers:Layer[];duration:number;variant:Variant;targetLufs:number;background:{kind:'brown'|'pink'|'none'|'file';path?:string;name?:string;gainDb:number;muted?:boolean;solo?:boolean;highpassHz?:number;lowpassHz?:number;fadeIn?:number;fadeOut?:number;pan?:number;speed?:number;reverse?:boolean};pulse:{enabled:boolean;hz:number;depth:number};exports:RenderResult[]}
 export interface Progress {stage:string;progress:number}
 export interface UpdateStatus {phase:string;enabled:boolean;version:string;progress:number}
 export interface Bridge {
@@ -24,6 +24,7 @@ export interface Bridge {
   setLanguage?(language:'en'|'pl'):Promise<void>;
   bootstrap():Promise<{projects:Project[];assets:Asset[];version:string;dataPath:string}>;
   saveProject(project:Project):Promise<Project>;
+  removeExport(request:{project:Project;exportId:string;trash:boolean}):Promise<{project:Project;reportRetained:boolean}>;
   removeAsset(id:string):Promise<void>;
   importAudio():Promise<Asset[]>;
   importText():Promise<string|null>;
@@ -52,7 +53,7 @@ export const templateLines:Record<Mode,Array<[Role,string]>>={
 };
 export function createProject(name=t("Nowa sesja"),mode:Mode='classic'):Project {
   const now=new Date().toISOString();
-  return {schemaVersion:2,id:uid(),name,mode,createdAt:now,updatedAt:now,script:templateLines[mode].map(([role,text])=>({id:uid(),role,text:t(text)})),layers:[],duration:180,variant:'LOW',targetLufs:-18,background:{kind:(mode==='spell'||mode==='forced-spell')?'pink':'brown',gainDb:-18},pulse:{enabled:false,hz:6,depth:0.2},exports:[]};
+  return {schemaVersion:2,id:uid(),name,mode,createdAt:now,updatedAt:now,script:templateLines[mode].map(([role,text])=>({id:uid(),role,text:t(text)})),layers:[],duration:180,variant:'LOW',targetLufs:-24,background:{kind:(mode==='spell'||mode==='forced-spell')?'pink':'brown',gainDb:-18},pulse:{enabled:false,hz:6,depth:0.2},exports:[]};
 }
 export function applyMode(p:Project,mode:Mode):Project{return {...p,mode};}
 export function duplicateProject(p:Project):Project{const now=new Date().toISOString();return {...structuredClone(p),id:uid(),name:t("{0} · kopia", [p.name.slice(0,185)]),createdAt:now,updatedAt:now,exports:[],comparisons:[],script:p.script.map(l=>({...l,id:uid()})),layers:p.layers.map(l=>({...l,id:uid()}))};}
@@ -108,10 +109,13 @@ export function validateProject(input:unknown):Project {
   if(p.schemaVersion!==2)throw new Error(t("Nieobsługiwana wersja projektu."));
   textIn(p.id,100,t("identyfikator"));if(!/^[a-zA-Z0-9_-]+$/.test(p.id))throw new Error(t("Nieprawidłowy identyfikator projektu."));
   dateIn(p.createdAt,t("utworzenie"));dateIn(p.updatedAt,t("ostatni zapis"));textIn(p.name,200,t("nazwa"));if(!p.name.trim())throw new Error(t("Nadaj projektowi nazwę."));
-  if(!['classic','forced','spell','forced-spell'].includes(p.mode)||!['CLEAR','LOW','MASKED','CONTROL'].includes(p.variant))throw new Error(t("Nieprawidłowy tryb projektu."));
-  numberIn(p.duration,5,3600,t("czas"));numberIn(p.targetLufs,-24,-14,t("głośność"));
+  if(!['classic','forced','spell','forced-spell'].includes(p.mode)||!['CLEAR','LOW','MASKED','DEEP','CONTROL'].includes(p.variant))throw new Error(t("Nieprawidłowy tryb projektu."));
+  numberIn(p.duration,5,3600,t("czas"));numberIn(p.targetLufs,-36,-14,t("głośność"));
   if(!p.background||!['brown','pink','none','file'].includes(p.background.kind))throw new Error(t("Nieprawidłowe tło."));
   numberIn(p.background.gainDb,-60,0,t("poziom tła"));
+  for(const [key,min,max] of [['highpassHz',20,2000],['lowpassHz',1000,20000],['fadeIn',0,10],['fadeOut',0,10],['pan',-1,1],['speed',.5,2]] as const){const value=p.background[key];if(value!==undefined)numberIn(value,min,max,key);}
+  for(const key of ['muted','solo','reverse'] as const)if(p.background[key]!==undefined&&typeof p.background[key]!=='boolean')throw new Error(t('Nieprawidłowe tło.'));
+  if((p.background.highpassHz??55)>=(p.background.lowpassHz??10000))throw new Error(t('Nieprawidłowe tło.'));
   if(!p.pulse||typeof p.pulse.enabled!=='boolean')throw new Error(t("Nieprawidłowa modulacja."));
   numberIn(p.pulse.hz,1,30,t("puls"));numberIn(p.pulse.depth,0,0.5,t("głębokość"));
   if(!Array.isArray(p.script)||p.script.length>500)throw new Error(t("Projekt może mieć do 500 zdań."));
@@ -126,7 +130,7 @@ export function validateProject(input:unknown):Project {
   if(p.comparisons!==undefined){if(!Array.isArray(p.comparisons)||p.comparisons.length>1000)throw new Error(t("Nieprawidłowe porównania."));for(const c of p.comparisons){dateIn(c.createdAt,t("porównanie"));textIn(c.id,100,t("identyfikator porównania"));textIn(c.firstId,100,t("plik A"));textIn(c.secondId,100,t("plik B"));for(const n of [c.firstVotes,c.secondVotes,c.ties]){numberIn(n,0,10,t("głosy"));if(!Number.isInteger(n))throw new Error(t("Nieprawidłowa liczba prób."));}if(c.firstVotes+c.secondVotes+c.ties!==10)throw new Error(t("Porównanie musi mieć 10 prób."));}}
   if(!Array.isArray(p.exports))p.exports=[];
   if(p.exports.length>2000)throw new Error(t("Zbyt wiele eksportów."));
-  for(const r of p.exports){dateIn(r.createdAt,t("eksport"));textIn(r.id,100,t("identyfikator eksportu"));textIn(r.path,2000,t("plik eksportu"));textIn(r.url,2500,t("adres eksportu"));numberIn(r.duration,0,3600,t("długość eksportu"));if(!['wav','mp3','flac'].includes(r.format)||!['CLEAR','LOW','MASKED','CONTROL'].includes(r.variant)||!r.metrics)throw new Error(t("Nieprawidłowy eksport."));for(const v of [r.metrics.integratedLufs,r.metrics.truePeakDbtp,r.metrics.correlation])if(v!==null&&(typeof v!=='number'||!Number.isFinite(v)))throw new Error(t("Nieprawidłowy pomiar."));if(!Array.isArray(r.checks)||r.checks.length>40)throw new Error(t("Nieprawidłowy raport."));for(const c of r.checks){textIn(c.label,500,t("kontrola"));textIn(c.detail,5000,t("opis kontroli"));if(!['pass','warn','fail'].includes(c.status))throw new Error(t("Nieprawidłowy wynik kontroli."));}}
+  for(const r of p.exports){dateIn(r.createdAt,t("eksport"));textIn(r.id,100,t("identyfikator eksportu"));textIn(r.path,2000,t("plik eksportu"));textIn(r.url,2500,t("adres eksportu"));numberIn(r.duration,0,3600,t("długość eksportu"));if(!['wav','mp3','flac'].includes(r.format)||!['CLEAR','LOW','MASKED','DEEP','CONTROL'].includes(r.variant)||!r.metrics)throw new Error(t("Nieprawidłowy eksport."));for(const v of [r.metrics.integratedLufs,r.metrics.truePeakDbtp,r.metrics.correlation])if(v!==null&&(typeof v!=='number'||!Number.isFinite(v)))throw new Error(t("Nieprawidłowy pomiar."));if(!Array.isArray(r.checks)||r.checks.length>40)throw new Error(t("Nieprawidłowy raport."));for(const c of r.checks){textIn(c.label,500,t("kontrola"));textIn(c.detail,5000,t("opis kontroli"));if(!['pass','warn','fail'].includes(c.status))throw new Error(t("Nieprawidłowy wynik kontroli."));}}
   return p;
 }
 export function migrateProject(input:unknown):Project {
@@ -138,7 +142,7 @@ export function migrateProject(input:unknown):Project {
   p.script=old.lines.map((l:Record<string,unknown>)=>({id:uid(),text:String(l.text??''),role:(['A','B','C'].includes(String(l.layer))?l.layer:'A') as Role}));
   const mix=(old.mix??{}) as Record<string,unknown>;
   if(typeof mix.durationS==='number')p.duration=Math.max(5,Math.min(3600,mix.durationS));
-  if(typeof mix.targetLufs==='number')p.targetLufs=Math.max(-24,Math.min(-14,mix.targetLufs));
+  if(typeof mix.targetLufs==='number')p.targetLufs=Math.max(-36,Math.min(-14,mix.targetLufs));
   return validateProject(p);
 }
 export function layerFromAsset(a:Asset,role:Role='A'):Layer{return {id:uid(),assetId:a.id,name:a.name,path:a.path,url:a.url,peaks:a.peaks,duration:a.duration,role,gainDb:0,pan:role==='A'?0:role==='B'?-0.18:0.18,speed:1,reverse:false,offset:0,muted:false,solo:false};}

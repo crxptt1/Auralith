@@ -8,7 +8,7 @@ Local Windows audio studio: English by default, Polish in Settings → Interface
 - Online Microsoft neural speech, installed Windows offline voice, lossless microphone capture and audio imports. TTS files are stored as PCM WAV; online source quality still depends on the upstream service.
 - Named tracks, mute/solo, gain, pan, full-content pitch-preserving tempo, reverse and offsets. Music background import, brown/pink noise, optional background pulse and continuous looping.
 - Common engine for 30-second preview and export. WAV PCM24/48kHz/stereo default; FLAC24 and MP3 320kbps. Loudness/peak/format and band-limited mono/stereo QC measured from actual outputs.
-- CLEAR/LOW/MASKED export batch, CONTROL background-only version, ten-trial randomized A/B preference comparison using LUFS attenuation, per-export recipe/report JSON.
+- CLEAR/LOW/MASKED/DEEP export batch (DEEP requires background), CONTROL background-only version, ten-trial randomized A/B preference comparison using LUFS attenuation, per-export recipe/report JSON.
 - Atomic local project saves, undo/redo, portable .auralith bundles with used media, legacy JSON script/settings import.
 - Liquid Glass and opaque Focus materials, spring-based controls, an app-specific Full/Reduced motion setting independent of Windows.
 
@@ -42,3 +42,11 @@ Original application code uses the custom Auralith Source-Available License; see
 - Read an affirmation: select a script line and keep it visible while recording. The take uses its text as its name and joins the matching A/B/C layer.
 - Remove recordings from the voice library. Existing project tracks retain their audio files.
 - Recording workflow check: `node scripts/check-recording.mjs` after `npm run build` (uses a simulated microphone).
+
+## 2.2.0 audio behavior
+
+Deep Mask (`desktop/deepmask.mjs`) measures three speech bands in 20 ms windows for each stereo channel, applies conservative lookahead and a smooth release, then attenuates voices before mastering. It adds no masking noise. `tests/audio-deep.test.mjs` checks the rendered signal, including silent/quiet passages, background controls and cancellation.
+
+Background controls are optional schema-2 fields so older sessions retain their settings. New projects use −24 LUFS; the accepted range is −36 to −14 LUFS. Playback gain is the square of the volume slider position.
+
+Export deletion validates app render ownership and project references before using the Windows Recycle Bin. History-only removal retains the audio file.

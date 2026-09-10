@@ -2,21 +2,21 @@
 
 ## Repository and privacy
 
-The configured repository is `crxptt1/Auralith`. Both `desktop/update-config.json` (runtime) and `package.json → build.publish` (packaging) point to it. This is a **public release feed**. While the repository is private, anonymous users cannot check or download updates. Make it public before distributing a version intended to auto-update. Do not embed a personal access token in the application. GitHub Pages is not required.
+The configured repository is `crxptt1/Auralith`. Both `desktop/update-config.json` (runtime) and `package.json → build.publish` (packaging) point to it. This is a **public release feed**. The repository is public. Keep releases and update metadata accessible to anonymous users. Do not embed a personal access token in the application. GitHub Pages is not required.
 
-The current 2.1.1 binaries have updater support; an end-to-end update from your GitHub Releases cannot be verified until accessible release files exist.
+Setup builds support GitHub updates. Test installation from the previous release separately; a successful feed check alone does not verify installation.
 
 ## Release a new version
 
 1. Work from this repository root. Install dependencies with `npm ci` and provide the documented `vendor/ffmpeg.exe`.
-2. Change the version with `npm version 2.1.2 --no-git-tag-version` (example). Update `CHANGELOG.md` and the bilingual notes in `src/components/Updates.tsx`.
+2. Change the version with `npm version 2.2.1 --no-git-tag-version` (example). Update `CHANGELOG.md` and the bilingual notes in `src/components/Updates.tsx`.
 3. Run `npm test`, `npm run build` and `node scripts/check-recording.mjs`.
 4. Build locally without publishing: `npx electron-builder --win portable nsis --publish never`.
-5. Create a GitHub Release with the matching tag, for example `v2.1.2`, and attach the **Setup.exe**, its **.blockmap**, and **latest.yml** generated together in `release/`. Attach **Portable.exe** as a separate manual download. Do not rename generated files or combine metadata from different builds.
+5. Create a GitHub Release with the matching tag, for example `v2.2.1`, and attach the **Setup.exe**, its **.blockmap**, and **latest.yml** generated together in `release/`. Attach **Portable.exe** as a separate manual download. Do not rename generated files or combine metadata from different builds.
 6. Publish the release (not a draft and not a prerelease for the stable updater).
 7. On a test machine with the previous Setup version installed, check for updates, download, then choose save/install/restart. Check that the new version starts and the project/audio remain intact.
 
-If `latest.yml` is absent, do not write it by hand: verify `build.publish` and regenerate the package with electron-builder. Publishing via electron-builder using `--publish always` is also possible, but needs a release-scoped GitHub credential in your build environment. Never commit that credential. Nothing in this workspace was uploaded automatically.
+If `latest.yml` is absent, do not write it by hand: verify `build.publish` and regenerate the package with electron-builder. Publishing via electron-builder using `--publish always` is also possible, but needs a release-scoped GitHub credential in your build environment. Never commit that credential. Publish only after local verification.
 
 ## Behavior in the app
 

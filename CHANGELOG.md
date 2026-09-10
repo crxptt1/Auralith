@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.0 — 2026-09-11
+
+- Deep Mask follows quiet passages in the background by attenuating voices.
+- Background controls: mute, solo, filters, pan, fades and file speed/reverse.
+- Quieter new sessions and finer playback volume control.
+- Remove exports from history or move their files to the Recycle Bin.
+- Existing sessions retain their loudness settings.
+
 ## 2.1.1 — 2026-09-09
 
 - Read a selected affirmation while recording. The take uses its text as its name and joins its A/B/C role.

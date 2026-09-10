@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {playbackGain} from '../src/audio/playback.ts';
+test('monitor gain is bounded with useful resolution at low levels',()=>{assert.equal(playbackGain(0),0);assert.equal(playbackGain(1),1);assert.ok(Math.abs(playbackGain(.2)-.04)<1e-10);assert.ok(playbackGain(.1)<playbackGain(.2));assert.equal(playbackGain(-1),0);assert.equal(playbackGain(2),1);assert.equal(playbackGain(NaN),0);});

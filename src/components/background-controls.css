@@ -1,0 +1,10 @@
+.background-control-buttons{display:flex;gap:8px;margin:12px 0}
+.background-control-buttons .active{background:var(--accent-soft);color:var(--accent)}
+.background-advice{display:flex;align-items:flex-start;gap:8px;font-size:11px;line-height:1.6;color:var(--muted);margin:12px 0 18px}
+.background-advice svg{flex-shrink:0;margin-top:3px;color:var(--amber)}
+.background-reset{margin-top:16px;max-width:100%;white-space:normal;text-align:left}
+.background-track[role=button]{cursor:pointer}
+.background-track[role=button]:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.studio-main .session-toolbar{flex-wrap:wrap}
+.deep-mask-note{font-size:11px;line-height:1.6;color:var(--muted);margin:0 0 14px}
+.mastering-presets{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}

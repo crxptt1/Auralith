@@ -12,7 +12,7 @@ protocol.registerSchemesAsPrivileged([{scheme:'auralith',privileges:{standard:tr
 if(process.env.AURALITH_DATA_DIR)app.setPath('userData',path.resolve(process.env.AURALITH_DATA_DIR));
 const instanceLock=app.requestSingleInstanceLock();
 if(!instanceLock)app.exit(0);
-let updates,win,store,engine,model,i18n,assets=[],renderJob=null,ttsBusy=false,ttsProcess=null,confirmedClose=false;
+let exportRemovalBusy=false,updates,win,store,engine,model,i18n,assets=[],renderJob=null,ttsBusy=false,ttsProcess=null,confirmedClose=false;
 const media=new Map();
 const text=s=>i18n?i18n.tMessage(s):s;
 const dialogOptions=options=>({...options,...(options.title?{title:text(options.title)}:{}),...(options.message?{message:text(options.message)}:{}),...(options.detail?{detail:text(options.detail)}:{}),...(options.buttons?{buttons:options.buttons.map(text)}:{}),...(options.filters?{filters:options.filters.map(f=>({...f,name:text(f.name)}))}:{})});
@@ -94,13 +94,14 @@ async function register(){
  handle('updates:enabled',value=>updates.setEnabled(value));
  handle('updates:check',()=>updates.check());
  handle('updates:download',()=>updates.download());
- handle('updates:install',()=>{if(renderJob||ttsBusy||updates.status().phase!=='downloaded')throw new Error('Update cannot be installed now.');confirmedClose=true;updates.install();});
+ handle('updates:install',()=>{if(renderJob||ttsBusy||exportRemovalBusy||updates.status().phase!=='downloaded')throw new Error('Update cannot be installed now.');confirmedClose=true;updates.install();});
  handle('support:open',url=>shell.openExternal(validateSupportUrl(url)));
  handle('app:language',language=>{if(!['en','pl'].includes(language))throw new Error('Unsupported language.');i18n.setLocale(language);});
  handle('app:bootstrap',async()=>{const raw=await store.listProjects();const projects=[];for(const p of raw){try{projects.push(hydrateProject(validateManagedProject(p)));}catch{}}return {projects,assets:assets.map(hydrateAsset),version:app.getVersion(),dataPath:store.root};});
  handle('project:save',async p=>hydrateProject(await store.saveProject(validateManagedProject(p))));
  handle('project:export',exportProject);handle('project:import',importProject);handle('audio:import',importAudio);
  handle('text:import',async()=>{const r=await openDialog({title:'Importuj tekst afirmacji',properties:['openFile'],filters:[{name:'Tekst',extensions:['txt','md']}]});if(r.canceled)return null;const stat=await fs.stat(r.filePaths[0]);if(stat.size>1024*1024)throw new Error('Plik tekstowy może mieć do 1 MB.');return fs.readFile(r.filePaths[0],'utf8');});
+ handle('export:remove',async request=>{if(exportRemovalBusy)throw new Error('Export removal is already running.');exportRemovalBusy=true;try{if(renderJob||ttsBusy)throw new Error('Finish audio processing first.');if(typeof request?.exportId!=='string'||typeof request?.trash!=='boolean')throw new Error('Invalid export removal.');const p=validateManagedProject(request.project);const found=p.exports.find(r=>r.id===request.exportId);if(!found)throw new Error('Export not found.');let reportRetained=false;if(request.trash){const {trashRenderedExport}=require('./export-removal.cjs');({reportRetained}=await trashRenderedExport({renders:store.renders,project:p,exportId:request.exportId,projects:[p,...(await store.listProjects()).filter(x=>x.id!==p.id)],trashItem:file=>shell.trashItem(file)}));}p.exports=p.exports.filter(r=>r.id!==request.exportId);p.comparisons=p.comparisons?.filter(c=>c.firstId!==request.exportId&&c.secondId!==request.exportId);return {project:hydrateProject(await store.saveProject(p)),reportRetained};}finally{exportRemovalBusy=false;}});
  handle('audio:remove',async id=>{if(typeof id!=='string'||!assets.some(a=>a.id===id))throw new Error('Recording not found.');const next=assets.filter(a=>a.id!==id);await store.saveAssets(next);assets=assets.filter(a=>a.id!==id);});
  handle('audio:synthesize',synthesize);
  handle('audio:recording',async request=>{if(!(request?.bytes instanceof ArrayBuffer)||!request.bytes.byteLength||request.bytes.byteLength>150*1024*1024)throw new Error('Nieprawidłowe nagranie.');const temporary=path.join(store.work,crypto.randomUUID()+(request.format==='wav'?'.wav':'.webm'));try{await fs.writeFile(temporary,Buffer.from(request.bytes));return await addAsset(temporary,request.name||'Nagranie mikrofonu');}finally{await fs.rm(temporary,{force:true});}});
@@ -113,7 +114,7 @@ async function register(){
 async function createWindow(){
  win=new BrowserWindow({width:1480,height:960,minWidth:1000,minHeight:700,show:false,frame:false,backgroundColor:'#dce5df',title:'Auralith Studio',icon:app.isPackaged?path.join(process.resourcesPath,'icon.png'):path.join(__dirname,'../build/icon.png'),webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(event,url)=>{if(url!==win.webContents.getURL())event.preventDefault();});
- win.on('close',async event=>{if(confirmedClose)return;event.preventDefault();if(renderJob||ttsBusy){const r=await messageDialog({type:'question',buttons:['Zostań','Zamknij aplikację'],defaultId:0,cancelId:0,message:'Trwa przetwarzanie audio. Zamknąć aplikację?',detail:'Bieżący render zostanie anulowany.'});if(r.response===0)return;renderJob?.abort();ttsProcess?.kill();}win.webContents.send('app:close-request');});
+ win.on('close',async event=>{if(exportRemovalBusy){event.preventDefault();return;}if(confirmedClose)return;event.preventDefault();if(renderJob||ttsBusy){const r=await messageDialog({type:'question',buttons:['Zostań','Zamknij aplikację'],defaultId:0,cancelId:0,message:'Trwa przetwarzanie audio. Zamknąć aplikację?',detail:'Bieżący render zostanie anulowany.'});if(r.response===0)return;renderJob?.abort();ttsProcess?.kill();}win.webContents.send('app:close-request');});
  win.once('ready-to-show',()=>win.show());
  if(process.env.AURALITH_DEV_URL)await win.loadURL(process.env.AURALITH_DEV_URL);else await win.loadFile(path.join(__dirname,'../dist/index.html'));
 }

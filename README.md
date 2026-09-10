@@ -27,6 +27,14 @@ Write your affirmations, give them a voice, and arrange them over music or a qui
 - **Export with useful measurements.** WAV 24-bit / 48 kHz, FLAC or MP3 320 kbps, with loudness and peak checks on the finished file.
 - **Make it comfortable.** Liquid Glass or Focus, English or Polish, full or reduced animations, and an editable local library.
 
+## More control over masking
+
+Choose **Deep Mask** to lower voices automatically as music becomes quieter. It analyzes three speech-frequency bands in both channels and attenuates the voices; it does not make the background louder. Silent passages can silence the voices. Existing **Masked** keeps a fixed mix balance. Always preview a quiet passage: this is audio processing, not a guarantee of inaudibility or subliminal effectiveness.
+
+Click the background track to adjust gain, mute, solo, filters, pan and fades. Imported music also supports speed and reverse. Advanced controls include a reset; the overall mix still fades at its beginning and end.
+
+New sessions target **−24 LUFS**. Existing projects retain their settings; open **Mastering** to lower their target if needed. Playback now has finer control at low volume. In Exports, the trash button lets you remove a history entry or recycle the app-owned file. Files used by projects are protected.
+
 ## Read while you record
 
 Choose **Voices & recordings → Read an affirmation**, select a sentence, then record. The text stays visible until you finish. The trash button removes a recording from the library; audio already attached to projects is retained.

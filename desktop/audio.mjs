@@ -3,6 +3,7 @@ import {mkdir,mkdtemp,rm,rename,stat} from 'node:fs/promises';
 import path from 'node:path';
 import {openSync,closeSync,createReadStream} from 'node:fs';
 import {readFile} from 'node:fs/promises';
+import {applyDeepMask} from './deepmask.mjs';
 
 const abortError=()=>Object.assign(new Error('Renderowanie anulowane.'),{name:'AbortError'});
 const finite=(value,min,max,label)=>{if(typeof value!=='number'||!Number.isFinite(value)||value<min||value>max)throw new Error(`Nieprawidłowa wartość: ${label}.`);};
@@ -84,10 +85,13 @@ export function createAudioEngine({ffmpegPath,workDir}) {
  }
  function validate(r) {
   if(!r||typeof r.outputPath!=='string'||!r.outputPath.trim())throw new Error('Brak ścieżki eksportu.');
-  finite(r.duration,5,3600,'czas');finite(r.targetLufs,-24,-14,'LUFS');
-  if(!['CLEAR','LOW','MASKED','CONTROL'].includes(r.variant)||!['wav','flac','mp3'].includes(r.format))throw new Error('Nieobsługiwany wariant lub format.');
+  finite(r.duration,5,3600,'czas');finite(r.targetLufs,-36,-14,'LUFS');
+  if(!['CLEAR','LOW','MASKED','DEEP','CONTROL'].includes(r.variant)||!['wav','flac','mp3'].includes(r.format))throw new Error('Nieobsługiwany wariant lub format.');
   if(!r.background||!['none','brown','pink','file'].includes(r.background.kind))throw new Error('Nieprawidłowe tło.');
   finite(r.background.gainDb,-60,0,'wzmocnienie tła');
+  for(const key of ['muted','solo','reverse'])if(r.background[key]!==undefined&&typeof r.background[key]!=='boolean')throw new Error(`Nieprawidłowe pole tła ${key}.`);
+  for(const [key,min,max] of [['highpassHz',20,2000],['lowpassHz',1000,20000],['fadeIn',0,10],['fadeOut',0,10],['pan',-1,1],['speed',0.5,2]])if(r.background[key]!==undefined)finite(r.background[key],min,max,key);
+  if((r.background.highpassHz??55)>=(r.background.lowpassHz??10000))throw new Error('Nieprawidłowe pasmo tła.');
   if(r.background.kind==='file'&&(typeof r.background.path!=='string'||!r.background.path.trim()))throw new Error('Brak pliku tła.');
   if(!r.pulse||typeof r.pulse.enabled!=='boolean')throw new Error('Nieprawidłowa modulacja.');
   finite(r.pulse.hz,1,30,'częstotliwość');finite(r.pulse.depth,0,0.5,'głębokość');
@@ -96,9 +100,12 @@ export function createAudioEngine({ffmpegPath,workDir}) {
  }
  async function render(r,{signal,onProgress}={}) {
   validate(r);if(signal?.aborted)throw abortError();
+  r={...r,background:{muted:false,solo:false,highpassHz:55,lowpassHz:10000,fadeIn:0.015,fadeOut:0.025,pan:0,speed:1,reverse:false,...r.background}};
+  if(r.background.muted)r.background.kind='none';
+  if(r.variant==='DEEP'&&r.background.kind==='none')throw new Error('Deep Mask wymaga mierzalnego, niewyciszonego tła.');
   const emit=(stage,progress)=>{onProgress?.({stage,progress});if(signal?.aborted)throw abortError();};
   const solos=r.layers.some(l=>l.solo&&!l.muted);
-  const layers=r.variant==='CONTROL'?[]:r.layers.filter(l=>!l.muted&&(!solos||l.solo)&&l.offset<r.duration);
+  const layers=r.variant==='CONTROL'||r.background.solo&&!r.background.muted&&r.background.kind!=='none'?[]:r.layers.filter(l=>!l.muted&&(!solos||l.solo)&&l.offset<r.duration);
   if(!layers.length&&r.background.kind==='none')throw new Error('Miks nie zawiera dźwięku.');
   await mkdir(workDir,{recursive:true});
   const job=await mkdtemp(path.join(workDir,'render-'));
@@ -138,12 +145,15 @@ export function createAudioEngine({ffmpegPath,workDir}) {
      const info=await probeInternal(r.background.path,signal);
      if(info.duration>600)throw new Error('Aktywny plik tła może mieć maksymalnie 10 minut. Import obsługuje do 60 minut; podziel dłuższy materiał przed renderowaniem.');
      const backgroundSource=path.join(job,'background-source.wav');
-     await exec(['-i',r.background.path,'-map','0:a:0','-af',edge(info.duration),...pcm,backgroundSource]);
+     await exec(['-i',r.background.path,'-map','0:a:0','-af',`atempo=${r.background.speed}${r.background.reverse?',areverse':''},${edge(info.duration/r.background.speed)}`,...pcm,backgroundSource]);
      input=['-stream_loop','-1','-i',await loopFile(backgroundSource,'background-loop.wav')];
     }
     else input=['-f','lavfi','-i',`anoisesrc=color=${r.background.kind}:amplitude=0.25:sample_rate=48000:seed=617`];
     backgroundNominal=path.join(job,'background-nominal.wav');
-    await exec([...input,'-t',String(r.duration),'-af',`highpass=f=55,lowpass=f=10000,volume=-18dB,${edge(r.duration)}`,...pcm,backgroundNominal]);
+    const bg=r.background;
+    const bgPan=bg.pan===0?'':`,aformat=channel_layouts=stereo,pan=stereo|c0=${Math.min(1,1-bg.pan)}*c0|c1=${Math.min(1,1+bg.pan)}*c1`;
+    const bgFade=[bg.fadeIn>0?`afade=t=in:d=${Math.min(bg.fadeIn,r.duration)}`:'',bg.fadeOut>0?`afade=t=out:st=${Math.max(0,r.duration-bg.fadeOut)}:d=${Math.min(bg.fadeOut,r.duration)}`:''].filter(Boolean).join(',');
+    await exec([...input,'-t',String(r.duration),'-af',`highpass=f=${bg.highpassHz},lowpass=f=${bg.lowpassHz},volume=-18dB${bgPan}${bgFade?','+bgFade:''}`,...pcm,backgroundNominal]);
     await exec(['-i',backgroundNominal,'-af',`volume=${r.background.gainDb+18}dB${r.pulse.enabled&&r.variant!=='CONTROL'?`,tremolo=f=${r.pulse.hz}:d=${r.pulse.depth}`:''}`,...pcm,backgroundFile]);
    }
    emit('Miksowanie głosów',0.35);
@@ -162,14 +172,19 @@ export function createAudioEngine({ffmpegPath,workDir}) {
    // volumedetect rounds digital silence to -91 dB. Reject it explicitly.
    const voiceAudible=voiceBand!==null&&voiceBand>-90;
    const backgroundAudible=backgroundBand!==null&&backgroundBand>-90;
+   if(r.variant==='DEEP'&&!backgroundAudible)throw new Error('Deep Mask wymaga mierzalnego tła w paśmie mowy.');
    if(!voiceAudible&&!backgroundAudible)throw new Error('Miks jest pusty lub zawiera wyłącznie ciszę.');
-   const relative={CLEAR:-6,LOW:-15,MASKED:-25,CONTROL:0}[r.variant];
+   const relative={CLEAR:-6,LOW:-15,MASKED:-25,DEEP:-32,CONTROL:0}[r.variant];
    // Reference uses unity layer gains and nominal -18 dB background. User gains remain independent.
    const gain=nominalVoiceBand!==null&&nominalVoiceBand>-90?(nominalBackgroundBand!==null&&nominalBackgroundBand>-90?nominalBackgroundBand:-24)+relative-nominalVoiceBand:0;
-   let voiceBackgroundDb=null;
+   let voiceBackgroundDb=null,deepMask=null;
    if(voiceAudible){
     const calibrated=path.join(job,'voices-calibrated.wav');
     await exec(['-i',voices,'-af',`volume=${gain}dB`,...pcm,calibrated]);voices=calibrated;
+    if(r.variant==='DEEP'){
+     emit('Deep Mask · analiza pasm i obwiedni',0.43);
+     const deep=await applyDeepMask({voices,background:backgroundFile,duration:r.duration,job,exec,signal});voices=deep.file;deepMask=deep.metrics;
+    }
     const actualVoiceBand=await measure(voices,true);
     if(backgroundAudible&&actualVoiceBand!==null&&actualVoiceBand>-90)voiceBackgroundDb=actualVoiceBand-backgroundBand;
    }
@@ -197,11 +212,12 @@ export function createAudioEngine({ffmpegPath,workDir}) {
    const stereo=await stereoQc(temporary,signal);
    if(integratedLufs===null||truePeakDbtp===null)throw new Error('Eksport nie zawiera mierzalnego sygnału.');
    const checks=[
+    ...(deepMask?[{label:'Deep Mask · obwiednia',status:'pass',detail:`Analiza co ${deepMask.windowMs} ms w 3 pasmach, osobno L/R; pułap -32 dB RMS względem rzeczywistego tła przed masteringiem. ${deepMask.silentWindows} okien wyciszonych. Pomiar techniczny, bez gwarancji niesłyszalności lub skuteczności.`}]:[]),
     {label:'Głośność z pliku',status:Math.abs(integratedLufs-r.targetLufs)<=1?'pass':'warn',detail:`${integratedLufs.toFixed(1)} LUFS-I; cel ${r.targetLufs}.`},
     {label:'Szczyt rzeczywisty',status:truePeakDbtp<=peakTarget+0.2?'pass':'warn',detail:`${truePeakDbtp.toFixed(2)} dBTP; pomiar nadpróbkowany FFmpeg.`},
     {label:'Format pliku',status:metadata.sampleRate===48000&&metadata.channels===2&&(r.format==='mp3'||metadata.bits===24)?'pass':'fail',detail:`${metadata.sampleRate} Hz · ${metadata.channels} kanały · ${metadata.bits?metadata.bits+' bit':'stratny kodek'}.`},
     {label:'Długość',status:Math.abs(metadata.duration-r.duration)<0.1?'pass':'fail',detail:`${metadata.duration.toFixed(3)} s.`},
-    {label:'Poziom głosu',status:voiceBackgroundDb!==null||r.variant==='CONTROL'?'pass':'warn',detail:voiceBackgroundDb!==null?`Zmierzono ${voiceBackgroundDb.toFixed(1)} dB głos/tło w 300–4000 Hz po suwakach i modulacji tła, przed masteringiem. Profil bazowy ${relative} dB; końcowy limiter może zmienić relację.`:r.variant==='CONTROL'?'Wyłącznie tło; głosy i modulacja wyłączone.':'Brak mierzalnego odniesienia głos/tło; zastosowano poziom odniesienia głosu.'},
+    {label:'Poziom głosu',status:voiceBackgroundDb!==null||!voices||r.variant==='CONTROL'?'pass':'warn',detail:voiceBackgroundDb!==null?`Zmierzono ${voiceBackgroundDb.toFixed(1)} dB głos/tło w 300–4000 Hz po suwakach i modulacji tła, przed masteringiem. Profil bazowy ${relative} dB; końcowy limiter może zmienić relację.`:r.variant==='CONTROL'?'Wyłącznie tło; głosy i modulacja wyłączone.':!voices?'Brak aktywnych głosów; wyłącznie tło.':'Brak mierzalnego odniesienia głos/tło; zastosowano poziom odniesienia głosu.'},
     {label:'Zgodność mono',status:stereo.monoLossDb!==null&&stereo.monoLossDb<=3.1?'pass':'warn',detail:`Pomiar eksportu, próbkowanie 12 kHz (pasmo do 6 kHz): korelacja ${stereo.correlation===null?'nieokreślona (cichy kanał)':stereo.correlation.toFixed(3)}; ${stereo.monoCancelled?'całkowite wygaszenie po zsumowaniu':stereo.monoLossDb===null?'strata mono nieokreślona':`strata mono ${stereo.monoLossDb.toFixed(2)} dB`}. Mono=(L+R)/2, odniesienie: średnia energia kanałów.`},
     {label:'Łączenia pętli',status:'pass',detail:'Importowane źródła: 20 ms crossfade między kopiami oraz krótkie obwiednie na granicach cyklu. Ciche dołki na granicach pozostają możliwe.'}
    ];
@@ -210,7 +226,7 @@ export function createAudioEngine({ffmpegPath,workDir}) {
    await rename(temporary,path.resolve(r.outputPath));temporary=undefined;
    // Commit already completed: callback failures must not turn a successful rename into an error.
    try{onProgress?.({stage:'Gotowe',progress:1});}catch{}
-   return {path:path.resolve(r.outputPath),duration:metadata.duration,variant:r.variant,format:r.format,metrics:{integratedLufs,truePeakDbtp,sampleRate:metadata.sampleRate,channels:metadata.channels,bits:metadata.bits,clipping:truePeakDbtp>=0,correlation:stereo.correlation,monoLossDb:stereo.monoLossDb,voiceBackgroundDb},checks,createdAt:new Date().toISOString()};
+   return {path:path.resolve(r.outputPath),duration:metadata.duration,variant:r.variant,format:r.format,metrics:{integratedLufs,truePeakDbtp,sampleRate:metadata.sampleRate,channels:metadata.channels,bits:metadata.bits,clipping:truePeakDbtp>=0,correlation:stereo.correlation,monoLossDb:stereo.monoLossDb,voiceBackgroundDb,...(deepMask?{deepMask}:{})},checks,createdAt:new Date().toISOString()};
   } finally {
    if(temporary)await rm(temporary,{force:true}).catch(()=>{});
    await rm(job,{recursive:true,force:true}).catch(()=>{});
