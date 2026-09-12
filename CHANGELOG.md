@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.2 — 2026-09-13
+
+- Waveforms now use a thin, smoothed contour so the studio timeline stays readable and polished at different widths.
+
 ## 2.2.1 — 2026-09-12
 
 - Exports extend to retain the end of active vocal takes instead of cutting them at the session length.

@@ -8,6 +8,7 @@ export const english:Record<string,string>={
 "Zmierzono {0} dB głos/tło w 300–4000 Hz po suwakach i modulacji tła, przed masteringiem. Profil bazowy {1} dB; końcowy limiter może zmienić relację.":"Measured {0} dB voice/background in 300–4000 Hz after gain controls and background modulation, before mastering. Base profile {1} dB; the final limiter can change the ratio.",
 "2.2.0 · podgląd":"2.2.0 · preview",
 "2.2.1 · podgląd":"2.2.1 · preview",
+"2.2.2 · podgląd":"2.2.2 · preview",
   "Głosy i nagrania": "Voices & recordings",
   "Ta funkcja działa w aplikacji Windows. Otwórz Auralith Studio.exe.": "This feature is available in the Windows app. Open Auralith Studio.exe.",
   "2.0.0 · podgląd": "2.0.0 · preview",
