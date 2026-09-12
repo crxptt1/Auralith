@@ -17,14 +17,14 @@ export interface Bridge {
   updateStatus?():Promise<UpdateStatus>;
   setUpdateChecks?(enabled:boolean):Promise<void>;
   checkUpdates?():Promise<void>;
-  downloadUpdate?():Promise<void>;
   installUpdate?():Promise<void>;
   onUpdateStatus?(fn:(status:UpdateStatus)=>void):()=>void;
   openSupport?(url:string):Promise<void>;
+  openReleasePage?():Promise<void>;
   setLanguage?(language:'en'|'pl'):Promise<void>;
   bootstrap():Promise<{projects:Project[];assets:Asset[];version:string;dataPath:string}>;
   saveProject(project:Project):Promise<Project>;
-  removeExport(request:{project:Project;exportId:string;trash:boolean}):Promise<{project:Project;reportRetained:boolean}>;
+  removeExport(request:{project:Project;exportId:string}):Promise<{project:Project}>;
   removeAsset(id:string):Promise<void>;
   importAudio():Promise<Asset[]>;
   importText():Promise<string|null>;
@@ -55,6 +55,7 @@ export function createProject(name=t("Nowa sesja"),mode:Mode='classic'):Project 
   const now=new Date().toISOString();
   return {schemaVersion:2,id:uid(),name,mode,createdAt:now,updatedAt:now,script:templateLines[mode].map(([role,text])=>({id:uid(),role,text:t(text)})),layers:[],duration:180,variant:'LOW',targetLufs:-24,background:{kind:(mode==='spell'||mode==='forced-spell')?'pink':'brown',gainDb:-18},pulse:{enabled:false,hz:6,depth:0.2},exports:[]};
 }
+export function shouldReplaceTemplateScript(project:Project):boolean{const template=templateLines[project.mode];return project.script.length===template.length&&project.script.every((line,index)=>line.role===template[index][0]&&line.text===t(template[index][1]));}
 export function applyMode(p:Project,mode:Mode):Project{return {...p,mode};}
 export function duplicateProject(p:Project):Project{const now=new Date().toISOString();return {...structuredClone(p),id:uid(),name:t("{0} · kopia", [p.name.slice(0,185)]),createdAt:now,updatedAt:now,exports:[],comparisons:[],script:p.script.map(l=>({...l,id:uid()})),layers:p.layers.map(l=>({...l,id:uid()}))};}
 export function findRepeatedLines(lines:Line[]):string[]{const seen=new Set<string>();const repeated:string[]=[];for(const line of lines){const key=line.text.toLocaleLowerCase('pl').replace(/[^\p{L}\p{N}\s]/gu,'').replace(/\s+/g,' ').trim();if(!key)continue;if(seen.has(key))repeated.push(line.id);seen.add(key);}return repeated;}

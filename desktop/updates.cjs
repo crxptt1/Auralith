@@ -13,8 +13,9 @@ function createUpdates({updater,repository,supported,enabled=true,persist=async(
   updater.on('update-downloaded',info=>send({phase:'downloaded',version:info.version,progress:100}));
   updater.on('error',()=>send({phase:'error'}));
  }
- return {
-  status:()=>({...state}),
+  return {
+   status:()=>({...state}),
+   releasePage:()=>ready?`https://github.com/${repository.owner}/${repository.repo}/releases/latest`:null,
   async setEnabled(value){if(typeof value!=='boolean')throw new Error('Invalid update preference.');await persist(value);send({enabled:value});},
   async check(){if(!ready||['checking','downloading','downloaded','available'].includes(state.phase))return;send({phase:'checking'});try{await updater.checkForUpdates();}catch{send({phase:'error'});}},
   async download(){if(!ready||state.phase!=='available')return;send({phase:'downloading',progress:0});try{await updater.downloadUpdate();}catch{send({phase:'error'});}},

@@ -7,6 +7,7 @@ export const english:Record<string,string>={
 "Analiza co {0} ms w 3 pasmach, osobno L/R; pułap -32 dB RMS względem rzeczywistego tła przed masteringiem. {1} okien wyciszonych. Pomiar techniczny, bez gwarancji niesłyszalności lub skuteczności.":"Analysis every {0} ms in 3 bands, separately L/R; -32 dB RMS ceiling relative to the actual background before mastering. {1} muted windows. Technical measurement, without a guarantee of inaudibility or effectiveness.",
 "Zmierzono {0} dB głos/tło w 300–4000 Hz po suwakach i modulacji tła, przed masteringiem. Profil bazowy {1} dB; końcowy limiter może zmienić relację.":"Measured {0} dB voice/background in 300–4000 Hz after gain controls and background modulation, before mastering. Base profile {1} dB; the final limiter can change the ratio.",
 "2.2.0 · podgląd":"2.2.0 · preview",
+"2.2.1 · podgląd":"2.2.1 · preview",
   "Głosy i nagrania": "Voices & recordings",
   "Ta funkcja działa w aplikacji Windows. Otwórz Auralith Studio.exe.": "This feature is available in the Windows app. Open Auralith Studio.exe.",
   "2.0.0 · podgląd": "2.0.0 · preview",

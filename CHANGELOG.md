@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.1 — 2026-09-12
+
+- Exports extend to retain the end of active vocal takes instead of cutting them at the session length.
+- Preview rendering removes earlier temporary preview files; export deletion permanently removes the app-owned audio and report.
+- TXT / Markdown import replaces untouched starter lines, Studio has a clear return to Session action, and recording waveforms use the imported audio peaks.
+- Update checks now lead to the matching GitHub release page for a reliable manual download.
+
 ## 2.2.0 — 2026-09-11
 
 - Deep Mask follows quiet passages in the background by attenuating voices.

@@ -12,6 +12,7 @@ export function createProject(name = t("Nowa sesja"), mode = 'classic') {
     const now = new Date().toISOString();
     return { schemaVersion: 2, id: uid(), name, mode, createdAt: now, updatedAt: now, script: templateLines[mode].map(([role, text]) => ({ id: uid(), role, text: t(text) })), layers: [], duration: 180, variant: 'LOW', targetLufs: -24, background: { kind: (mode === 'spell' || mode === 'forced-spell') ? 'pink' : 'brown', gainDb: -18 }, pulse: { enabled: false, hz: 6, depth: 0.2 }, exports: [] };
 }
+export function shouldReplaceTemplateScript(project) { const template = templateLines[project.mode]; return project.script.length === template.length && project.script.every((line, index) => line.role === template[index][0] && line.text === t(template[index][1])); }
 export function applyMode(p, mode) { return { ...p, mode }; }
 export function duplicateProject(p) { const now = new Date().toISOString(); return { ...structuredClone(p), id: uid(), name: t("{0} · kopia", [p.name.slice(0, 185)]), createdAt: now, updatedAt: now, exports: [], comparisons: [], script: p.script.map(l => ({ ...l, id: uid() })), layers: p.layers.map(l => ({ ...l, id: uid() })) }; }
 export function findRepeatedLines(lines) { const seen = new Set(); const repeated = []; for (const line of lines) {

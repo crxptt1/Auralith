@@ -1,6 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createProject,parseScript,validateProject,migrateProject,applyMode,findRepeatedLines,personalizeScript,duplicateProject} from '../src/model.ts';
+import {createProject,parseScript,validateProject,migrateProject,applyMode,findRepeatedLines,personalizeScript,duplicateProject,shouldReplaceTemplateScript} from '../src/model.ts';
+
+test('only an untouched mode template is replaced by an imported script',()=>{
+ const template=createProject('Import','forced-spell');
+ assert.equal(shouldReplaceTemplateScript(template),true);
+ template.script[0].text='Mój własny tekst';
+ assert.equal(shouldReplaceTemplateScript(template),false);
+});
 
 test('a project round-trips without losing Unicode script or mode',()=>{
   const p=createProject('Mój spokojny głos','spell');

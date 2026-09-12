@@ -98,15 +98,24 @@ export function createAudioEngine({ffmpegPath,workDir}) {
   if(!Array.isArray(r.layers)||r.layers.length>32)throw new Error('Maksymalnie 32 warstwy.');
   for(const l of r.layers){if(!l||typeof l.path!=='string'||!l.path.trim())throw new Error('Brak pliku warstwy.');finite(l.gainDb,-60,12,'wzmocnienie');finite(l.pan,-1,1,'panorama');finite(l.speed,0.5,2,'tempo');finite(l.offset,0,r.duration,'przesunięcie');for(const key of ['reverse','muted','solo'])if(typeof l[key]!=='boolean')throw new Error(`Nieprawidłowe pole ${key}.`);}
  }
- async function render(r,{signal,onProgress}={}) {
+  async function render(r,{signal,onProgress}={}) {
   validate(r);if(signal?.aborted)throw abortError();
   r={...r,background:{muted:false,solo:false,highpassHz:55,lowpassHz:10000,fadeIn:0.015,fadeOut:0.025,pan:0,speed:1,reverse:false,...r.background}};
   if(r.background.muted)r.background.kind='none';
   if(r.variant==='DEEP'&&r.background.kind==='none')throw new Error('Deep Mask wymaga mierzalnego, niewyciszonego tła.');
   const emit=(stage,progress)=>{onProgress?.({stage,progress});if(signal?.aborted)throw abortError();};
-  const solos=r.layers.some(l=>l.solo&&!l.muted);
-  const layers=r.variant==='CONTROL'||r.background.solo&&!r.background.muted&&r.background.kind!=='none'?[]:r.layers.filter(l=>!l.muted&&(!solos||l.solo)&&l.offset<r.duration);
-  if(!layers.length&&r.background.kind==='none')throw new Error('Miks nie zawiera dźwięku.');
+   const solos=r.layers.some(l=>l.solo&&!l.muted);
+   const layers=r.variant==='CONTROL'||r.background.solo&&!r.background.muted&&r.background.kind!=='none'?[]:r.layers.filter(l=>!l.muted&&(!solos||l.solo)&&l.offset<r.duration);
+   if(!layers.length&&r.background.kind==='none')throw new Error('Miks nie zawiera dźwięku.');
+   // Exports retain a complete first pass of every active vocal take. Preview remains
+   // deliberately bounded so a quick listen never turns into a full export.
+   const sourceInfo=new Map();
+   if(r.autoExtend!==false){
+    let effectiveDuration=r.duration;
+    for(const layer of layers){const info=await probeInternal(layer.path,signal);if(info.duration>600)throw new Error('Aktywny plik warstwy może mieć maksymalnie 10 minut (limit pamięci odwracania). Import obsługuje do 60 minut; podziel dłuższy materiał przed renderowaniem.');sourceInfo.set(layer.path,info);effectiveDuration=Math.max(effectiveDuration,layer.offset+info.duration/layer.speed);}
+    if(effectiveDuration>3600)throw new Error('Pełna długość aktywnych nagrań przekracza maksymalną sesję 60 minut. Skróć warstwę lub zmniejsz przesunięcie.');
+    r={...r,duration:effectiveDuration};
+   }
   await mkdir(workDir,{recursive:true});
   const job=await mkdtemp(path.join(workDir,'render-'));
   let temporary;
@@ -129,7 +138,7 @@ export function createAudioEngine({ffmpegPath,workDir}) {
    emit('Przygotowanie źródeł',0.02);
    const prepared=[];
    for(let index=0;index<layers.length;index++){
-    const layer=layers[index];const info=await probeInternal(layer.path,signal);
+     const layer=layers[index];const info=sourceInfo.get(layer.path)||await probeInternal(layer.path,signal);
     // Disk preprocessing preserves the entire stretched input, with explicit bounded reverse memory.
     if(info.duration>600)throw new Error('Aktywny plik warstwy może mieć maksymalnie 10 minut (limit pamięci odwracania). Import obsługuje do 60 minut; podziel dłuższy materiał przed renderowaniem.');
     const duration=info.duration/layer.speed;const file=path.join(job,`stem-${index}.wav`);
