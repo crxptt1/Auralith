@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.3 — 2026-09-13
+
+- Export affirmation scripts as Markdown or plain TXT from the Script screen.
+- Markdown exports group lines under Identity, Intention and Imagination headings; TXT exports use A/B/C markers and both formats can be imported again.
+- Removed the obsolete Python studio from the local source workspace.
+
 ## 2.2.2 — 2026-09-13
 
 - Waveforms now use a thin, smoothed contour so the studio timeline stays readable and polished at different widths.

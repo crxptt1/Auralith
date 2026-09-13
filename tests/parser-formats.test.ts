@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {parseScript} from '../src/model.ts';
+import {formatScript,parseScript} from '../src/model.ts';
 const pairs=(text:string)=>parseScript(text).map(({role,text})=>[role,text]);
 test('case-insensitive inline roles preserve affirmation content',()=>{
  assert.deepEqual(pairs('a) Jestem.\nb) Działam.\nc) Widzę.\nA: One\nb| Two\n[C] Three'),[['A','Jestem.'],['B','Działam.'],['C','Widzę.'],['A','One'],['B','Two'],['C','Three']]);
@@ -25,4 +25,16 @@ test('blank input stays empty and imports retain the 500 line limit',()=>{
 });
 test('inline pipe markers preserve literal punctuation and spacing in the text',()=>{
  assert.deepEqual(pairs('B| Stay |exactly| here.\n[A] Keep  two spaces.'),[['B','Stay |exactly| here.'],['A','Keep  two spaces.']]);
+});
+test('exported Markdown and TXT scripts round-trip roles and text',()=>{
+ const source=[
+  {id:'a',role:'A' as const,text:'I am calm.'},
+  {id:'b',role:'B' as const,text:'I choose focus.'},
+  {id:'c',role:'C' as const,text:'I picture a clear path.'},
+ ];
+ const expected=source.map(({role,text})=>[role,text]);
+ assert.deepEqual(pairs(formatScript(source,'md')),expected);
+ assert.deepEqual(pairs(formatScript(source,'txt')),expected);
+ assert.match(formatScript(source,'md'),/## Identity[\s\S]*## Intention[\s\S]*## Imagination/);
+ assert.match(formatScript(source,'txt'),/^A: I am calm\.\r?\nB: I choose focus\./);
 });

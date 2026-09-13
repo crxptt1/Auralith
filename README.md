@@ -22,6 +22,7 @@ Write your affirmations, give them a voice, and arrange them over music or a qui
 
 - **Use your own voice.** Choose a microphone and read a selected affirmation right on screen. Each take keeps the sentence's name and A/B/C role.
 - **Start from text or audio.** Import TXT / Markdown, use text-to-speech, or bring in existing recordings.
+- **Keep your script portable.** Export the current affirmations as Markdown with role sections or as a plain TXT file with A/B/C markers; both formats can be imported again.
 - **Shape the mix.** Layer voices, adjust speed, pan and volume, reverse tracks, and add music, brown noise or pink noise.
 - **Choose a writing style.** Classic, Forced, Spell and Forced + Spell are editable writing templates. Audio settings stay independent.
 - **Export with useful measurements.** WAV 24-bit / 48 kHz, FLAC or MP3 320 kbps, with loudness and peak checks on the finished file.

@@ -24,6 +24,22 @@ export function findRepeatedLines(lines) { const seen = new Set(); const repeate
     seen.add(key);
 } return repeated; }
 export function personalizeScript(lines, name) { return lines.map(l => ({ ...l, text: l.text.replace(/\{(?:imię|imie|name)\}/gi, () => name.trim()) })); }
+export function formatScript(lines, format) {
+    const clean = lines.map(line => ({ role: line.role, text: line.text.trim() })).filter(line => line.text);
+    if (!clean.length)
+        return '';
+    if (format === 'txt')
+        return clean.map(line => `${line.role}: ${line.text}`).join('\r\n') + '\r\n';
+    const headings = { A: 'Identity', B: 'Intention', C: 'Imagination' };
+    const sections = [];
+    for (const role of ['A', 'B', 'C']) {
+        const roleLines = clean.filter(line => line.role === role);
+        if (!roleLines.length)
+            continue;
+        sections.push(`## ${headings[role]}`, '', ...roleLines.map(line => `- ${line.text}`), '');
+    }
+    return sections.join('\r\n').replace(/\r\n+$/, '') + '\r\n';
+}
 export function parseScript(text) {
     let role = 'A';
     const roles = { a: 'A', b: 'B', c: 'C', identity: 'A', intention: 'B', imagination: 'C', 'tożsamość': 'A', tozsamosc: 'A', intencja: 'B', 'wyobrażenie': 'C', wyobrazenie: 'C', 'wyobraźnia': 'C', wyobraznia: 'C' };

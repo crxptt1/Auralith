@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('auralith',{
  removeAsset:id=>ipcRenderer.invoke('audio:remove',id),
  importAudio:()=>ipcRenderer.invoke('audio:import'),
  importText:()=>ipcRenderer.invoke('text:import'),
+ exportText:content=>ipcRenderer.invoke('text:export',content),
  importProject:()=>ipcRenderer.invoke('project:import'),
  exportProject:project=>ipcRenderer.invoke('project:export',project),
  synthesize:request=>ipcRenderer.invoke('audio:synthesize',request),

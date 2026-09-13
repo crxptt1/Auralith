@@ -6,6 +6,7 @@ const crypto=require('node:crypto');
 const {createStore,atomicWrite}=require('./storage.cjs');
 const AdmZip=require('adm-zip');
 const {validateSupportUrl}=require('./support.cjs');
+const {chooseTextExportContent}=require('./text-export.cjs');
 const {spawn}=require('node:child_process');
 
 protocol.registerSchemesAsPrivileged([{scheme:'auralith',privileges:{standard:true,secure:true,supportFetchAPI:true,stream:true}}]);
@@ -101,6 +102,7 @@ async function register(){
  handle('project:save',async p=>hydrateProject(await store.saveProject(validateManagedProject(p))));
  handle('project:export',exportProject);handle('project:import',importProject);handle('audio:import',importAudio);
  handle('text:import',async()=>{const r=await openDialog({title:'Importuj tekst afirmacji',properties:['openFile'],filters:[{name:'Tekst',extensions:['txt','md']}]});if(r.canceled)return null;const stat=await fs.stat(r.filePaths[0]);if(stat.size>1024*1024)throw new Error('Plik tekstowy może mieć do 1 MB.');return fs.readFile(r.filePaths[0],'utf8');});
+ handle('text:export',async request=>{if(typeof request?.markdown!=='string'||typeof request?.plain!=='string'||request.markdown.length>1024*1024||request.plain.length>1024*1024)throw new Error('Tekst eksportu może mieć do 1 MB.');const r=await saveDialog({title:'Eksportuj tekst afirmacji',defaultPath:'auralith-script.md',filters:[{name:'Markdown',extensions:['md']},{name:'Tekst',extensions:['txt']}]});if(r.canceled||!r.filePath)return false;let filePath=r.filePath;if(!path.extname(filePath))filePath+='.md';await fs.writeFile(filePath,chooseTextExportContent(request,filePath),'utf8');return true;});
   handle('export:remove',async request=>{if(exportRemovalBusy)throw new Error('Export removal is already running.');exportRemovalBusy=true;try{if(renderJob||ttsBusy)throw new Error('Finish audio processing first.');if(typeof request?.exportId!=='string')throw new Error('Invalid export removal.');const p=validateManagedProject(request.project);const found=p.exports.find(r=>r.id===request.exportId);if(!found)throw new Error('Export not found.');const {deleteRenderedExport}=require('./export-removal.cjs');await deleteRenderedExport({renders:store.renders,project:p,exportId:request.exportId,projects:[p,...(await store.listProjects()).filter(x=>x.id!==p.id)]});p.exports=p.exports.filter(r=>r.id!==request.exportId);p.comparisons=p.comparisons?.filter(c=>c.firstId!==request.exportId&&c.secondId!==request.exportId);return {project:hydrateProject(await store.saveProject(p))};}finally{exportRemovalBusy=false;}});
  handle('audio:remove',async id=>{if(typeof id!=='string'||!assets.some(a=>a.id===id))throw new Error('Recording not found.');const next=assets.filter(a=>a.id!==id);await store.saveAssets(next);assets=assets.filter(a=>a.id!==id);});
  handle('audio:synthesize',synthesize);

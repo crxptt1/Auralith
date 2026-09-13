@@ -28,6 +28,7 @@ export interface Bridge {
   removeAsset(id:string):Promise<void>;
   importAudio():Promise<Asset[]>;
   importText():Promise<string|null>;
+  exportText(content:{markdown:string;plain:string}):Promise<boolean>;
   importProject():Promise<unknown|null>;
   exportProject(project:Project):Promise<boolean>;
   synthesize(request:{text:string;voice:string;rate:number;name:string}):Promise<Asset>;
@@ -60,6 +61,20 @@ export function applyMode(p:Project,mode:Mode):Project{return {...p,mode};}
 export function duplicateProject(p:Project):Project{const now=new Date().toISOString();return {...structuredClone(p),id:uid(),name:t("{0} · kopia", [p.name.slice(0,185)]),createdAt:now,updatedAt:now,exports:[],comparisons:[],script:p.script.map(l=>({...l,id:uid()})),layers:p.layers.map(l=>({...l,id:uid()}))};}
 export function findRepeatedLines(lines:Line[]):string[]{const seen=new Set<string>();const repeated:string[]=[];for(const line of lines){const key=line.text.toLocaleLowerCase('pl').replace(/[^\p{L}\p{N}\s]/gu,'').replace(/\s+/g,' ').trim();if(!key)continue;if(seen.has(key))repeated.push(line.id);seen.add(key);}return repeated;}
 export function personalizeScript(lines:Line[],name:string):Line[]{return lines.map(l=>({...l,text:l.text.replace(/\{(?:imię|imie|name)\}/gi,()=>name.trim())}));}
+export type ScriptExportFormat='md'|'txt';
+export function formatScript(lines:Line[],format:ScriptExportFormat):string{
+  const clean=lines.map(line=>({role:line.role,text:line.text.trim()})).filter(line=>line.text);
+  if(!clean.length)return '';
+  if(format==='txt')return clean.map(line=>`${line.role}: ${line.text}`).join('\r\n')+'\r\n';
+  const headings:Record<Role,string>={A:'Identity',B:'Intention',C:'Imagination'};
+  const sections: string[]=[];
+  for(const role of ['A','B','C'] as Role[]){
+    const roleLines=clean.filter(line=>line.role===role);
+    if(!roleLines.length)continue;
+    sections.push(`## ${headings[role]}`,'',...roleLines.map(line=>`- ${line.text}`),'');
+  }
+  return sections.join('\r\n').replace(/\r\n+$/,'')+'\r\n';
+}
 export function parseScript(text:string):Line[]{
   let role:Role='A';
   const roles:Record<string,Role>={a:'A',b:'B',c:'C',identity:'A',intention:'B',imagination:'C','tożsamość':'A',tozsamosc:'A',intencja:'B','wyobrażenie':'C',wyobrazenie:'C','wyobraźnia':'C',wyobraznia:'C'};
