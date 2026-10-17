@@ -1,6 +1,6 @@
 {
   "name": "auralith-studio",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "private": true,
   "type": "module",
   "description": "Auralith Studio — lokalne studio afirmacji i subliminali",
@@ -18,7 +18,7 @@
     "electron-updater": "6.8.9",
     "lucide-react": "^0.577.0",
     "motion": "^13.2.0",
-    "node-edge-tts": "1.2.10",
+    "node-edge-tts": "1.2.11",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

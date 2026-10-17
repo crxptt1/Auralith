@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.4 — 2026-10-17
+
+- Restore online neural voices after Microsoft's speech endpoint change caused HTTP 403 errors.
+- Update node-edge-tts to 1.2.11 and add an opt-in end-to-end speech check for all online voices and the Windows offline voice.
+
 ## 2.2.3 — 2026-09-13
 
 - Export affirmation scripts as Markdown or plain TXT from the Script screen.

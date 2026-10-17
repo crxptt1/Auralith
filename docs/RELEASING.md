@@ -10,8 +10,8 @@ Setup builds support GitHub updates. Test installation from the previous release
 
 1. Work from this repository root. Install dependencies with `npm ci` and provide the documented `vendor/ffmpeg.exe`.
 2. Change the version with `npm version 2.2.1 --no-git-tag-version` (example). Update `CHANGELOG.md` and the bilingual notes in `src/components/Updates.tsx`.
-3. Run `npm test`, `npm run build` and `node scripts/check-recording.mjs`.
-4. Build locally without publishing: `npx electron-builder --win portable nsis --publish never`.
+3. Run `npm test`, `npm run build`, `node scripts/check-recording.mjs` and `node scripts/check-tts.mjs` (requires internet for online voices).
+4. Build locally without publishing: `npx electron-builder --win portable nsis --publish never`. Verify packaged speech with `node scripts/check-tts.mjs "release/win-unpacked/Auralith Studio.exe"`.
 5. Create a GitHub Release with the matching tag, for example `v2.2.1`, and attach the **Setup.exe**, its **.blockmap**, and **latest.yml** generated together in `release/`. Attach **Portable.exe** as a separate manual download. Do not rename generated files or combine metadata from different builds.
 6. Publish the release (not a draft and not a prerelease for the stable updater).
 7. On a test machine with the previous Setup version installed, check for updates, download, then choose save/install/restart. Check that the new version starts and the project/audio remain intact.

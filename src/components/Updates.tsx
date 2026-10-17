@@ -6,6 +6,7 @@ import {Toggle} from './Primitives';
 import './updates.css';
 
 const notes=[
+ {"version":"2.2.4","en":["Online neural voices work again after Microsoft's speech service connection changed."],"pl":["Głosy neuronowe online znów działają po zmianie sposobu połączenia z usługą głosową Microsoft."]},
  {"version":"2.2.3","en":["Export your affirmation script as Markdown or plain TXT, preserving Identity, Intention and Imagination roles."],"pl":["Eksportuj skrypt afirmacji do Markdown lub zwykłego TXT, zachowując role Tożsamość, Intencja i Wyobrażenie."]},
  {"version":"2.2.2","en":["Waveforms now use a thin, smoothed contour for a cleaner studio timeline."],"pl":["Waveformy mają teraz cienki, wygładzony kontur, dzięki czemu oś czasu wygląda czyściej."]},
  {"version":"2.2.1","en":["Exports retain the end of an active vocal take instead of cutting it at the session length.","Previews clean up earlier preview files; deleting an export permanently removes its app-owned audio and report.","Importing a TXT or Markdown file replaces the untouched starter text, with a direct GitHub download page for updates."],"pl":["Eksport zachowuje koniec aktywnego nagrania zamiast ucinać go na długości sesji.","Preview sprząta wcześniejsze pliki podglądu; usunięcie eksportu trwale kasuje należące do aplikacji audio i raport.","Import TXT lub Markdown zastępuje nietknięty tekst startowy, a aktualizacje mają bezpośrednią stronę pobierania z GitHub."]},

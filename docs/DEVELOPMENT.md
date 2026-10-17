@@ -18,6 +18,8 @@ Use a supported Node.js LTS release. Install dependencies with `npm ci`. Put the
 
 `npm test` runs model, locale, PCM recording, storage and real FFmpeg tests. Audio tests use `FFMPEG_PATH` when provided, otherwise vendor/ffmpeg.exe. `npm run build` typechecks and generates the renderer plus shared native model. `npm start` launches the production build. `npm run package` builds portable and per-user NSIS targets into `release/`.
 
+After building, `node scripts/check-tts.mjs` verifies the complete synthesis IPC, worker, PCM conversion and saved recordings for all five online voices and the Windows offline voice. It sends short, fixed test sentences to Microsoft and uses a separate library under `work/`. This network check is opt-in, outside `npm test`. To check the packaged app, run `node scripts/check-tts.mjs "release/win-unpacked/Auralith Studio.exe"`.
+
 For development preview, run `npm run dev` and launch Electron with `AURALITH_DEV_URL=http://127.0.0.1:5178` (see vite.config.ts for port). Browser preview supports interface/project editing only; native audio functions require Electron.
 
 Test launches can use `AURALITH_DATA_DIR` for an isolated library. Production stores projects and managed audio under the Electron userData directory displayed in Settings. Portable refers to the executable; project data remains in the user's profile. Export a .auralith bundle to move a session and its media.
