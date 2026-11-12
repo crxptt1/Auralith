@@ -45,6 +45,14 @@ Original application code uses the custom Auralith Source-Available License; see
 - Remove recordings from the voice library. Existing project tracks retain their audio files.
 - Recording workflow check: `node scripts/check-recording.mjs` after `npm run build` (uses a simulated microphone).
 
+## 2.2.5 high-frequency audio
+
+`highFrequencyProfile()` in `src/model.ts` is shared with the native engine through the generated `desktop/model.mjs`. Optional choices `ULTRASONIC` and `NEAR` do not change schema 2 or defaults. The engine uses 96 kHz / 48 kHz float intermediates respectively. `desktop/ultrasonic.mjs` band-limits speech to 300–3000 Hz using a linear-phase FIR, modulates at 96 kHz with a 25 kHz / 20 kHz cosine, then uses antialias resampling to the output rate. DSB-SC sidebands occupy approximately 22–28 kHz / 17–23 kHz; the carrier itself is suppressed. FIR transitions are not mathematical brick walls.
+
+Nominal unity-gain voices provide a −24 dBFS peak reference with calibration gain capped at 0 dB; quiet recordings are never boosted to that reference. Layer gains remain independent until the vocal ceiling requires attenuation. Rejected source bands cannot be normalized back to full level, and stems below the speech activity threshold are excluded rather than bypassing modulation. The full mix uses attenuation only to −6 dBTP. No LUFS normalization or nonlinear peak limiter touches the modulated signal. Background gain is not normalized. Final peak analysis resamples to 192 kHz; full-band mono/stereo QC uses the native export rate. LUFS remains an informational measurement and may be null for signals rejected by its gating. WAV/FLAC only; MP3 is rejected in the engine, not only disabled in the UI.
+
+Run `node --test tests/audio-ultrasonic.test.mjs` for real spectral sideband, audible-leakage, gain, format, background and cancellation checks. Hardware bandwidth, acoustic output level and a 96 kHz OS playback path require separate hardware validation; a render test does not establish those. Do not increase monitoring level to compensate for inaudibility. These profiles are excluded from LUFS A/B comparisons and the audible-profile batch.
+
 ## 2.2.0 audio behavior
 
 Deep Mask (`desktop/deepmask.mjs`) measures three speech bands in 20 ms windows for each stereo channel, applies conservative lookahead and a smooth release, then attenuates voices before mastering. It adds no masking noise. `tests/audio-deep.test.mjs` checks the rendered signal, including silent/quiet passages, background controls and cancellation.

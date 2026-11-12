@@ -36,6 +36,19 @@ Click the background track to adjust gain, mute, solo, filters, pan and fades. I
 
 New sessions target **−24 LUFS**. Existing projects retain their settings; open **Mastering** to lower their target if needed. Playback now has finer control at low volume. In Exports, the trash button lets you remove a history entry or recycle the app-owned file. Files used by projects are protected.
 
+## Ultrasonic and 48 kHz compatibility (2.2.5)
+
+Choose **Ultrasonic 25 kHz** or **Near 20 kHz** in Studio (also available in Exports). Both modulate the actual voice, not an empty tone:
+
+| Profile | Voice band | Lossless export | Playback requirements |
+| --- | --- | --- | --- |
+| Ultrasonic 25 kHz | approximately 22–28 kHz | WAV / FLAC, 24-bit / 96 kHz | 96 kHz output path and a transducer supporting that band |
+| Near-ultrasonic 20 kHz | approximately 17–23 kHz | WAV / FLAC, 24-bit / 48 kHz | 48 kHz output path; some people can hear part of this band |
+
+The near-ultrasonic profile is the alternative for a 48 kHz output, not a way to reproduce 25 kHz through it. Sample-rate support alone does not guarantee speaker or headphone bandwidth. Windows, Bluetooth, audio enhancements and in-app playback can filter or resample audio; exporting at 96 kHz does not configure the output device. Use a compatible output path for playback. Do not raise volume because you cannot hear the result.
+
+These profiles use band-limited speech (300–3000 Hz), double-sideband suppressed-carrier modulation, a vocal peak ceiling of −24 dBFS and an attenuation-only mix ceiling of −6 dBTP. They do not boost to a LUFS target, and the background follows its gain slider. MP3 and LUFS A/B comparisons are unavailable for these profiles. Export each profile separately; the existing batch remains CLEAR / LOW / MASKED / DEEP. Old projects retain their existing processing. This is signal processing, not evidence of affirmation effectiveness.
+
 ## Read while you record
 
 Choose **Voices & recordings → Read an affirmation**, select a sentence, then record. The text stays visible until you finish. The trash button removes a recording from the library; audio already attached to projects is retained.

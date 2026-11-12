@@ -1,7 +1,10 @@
 import {t, tMessage, getLocale} from './i18n.js';
 export type Mode = 'classic' | 'forced' | 'spell' | 'forced-spell';
 export type Role = 'A' | 'B' | 'C';
-export type Variant = 'CLEAR' | 'LOW' | 'MASKED' | 'DEEP' | 'CONTROL';
+export type Variant = 'CLEAR' | 'LOW' | 'MASKED' | 'DEEP' | 'CONTROL' | 'ULTRASONIC' | 'NEAR';
+export function highFrequencyProfile(variant:Variant){
+  return variant==='ULTRASONIC'?{carrierHz:25000,sampleRate:96000,lowHz:22000,highHz:28000}:variant==='NEAR'?{carrierHz:20000,sampleRate:48000,lowHz:17000,highHz:23000}:null;
+}
 export type Format = 'wav' | 'flac' | 'mp3';
 export type Screen = 'projects' | 'script' | 'voices' | 'studio' | 'exports';
 export interface Line {id:string; text:string; role:Role}
@@ -125,7 +128,7 @@ export function validateProject(input:unknown):Project {
   if(p.schemaVersion!==2)throw new Error(t("Nieobsługiwana wersja projektu."));
   textIn(p.id,100,t("identyfikator"));if(!/^[a-zA-Z0-9_-]+$/.test(p.id))throw new Error(t("Nieprawidłowy identyfikator projektu."));
   dateIn(p.createdAt,t("utworzenie"));dateIn(p.updatedAt,t("ostatni zapis"));textIn(p.name,200,t("nazwa"));if(!p.name.trim())throw new Error(t("Nadaj projektowi nazwę."));
-  if(!['classic','forced','spell','forced-spell'].includes(p.mode)||!['CLEAR','LOW','MASKED','DEEP','CONTROL'].includes(p.variant))throw new Error(t("Nieprawidłowy tryb projektu."));
+  if(!['classic','forced','spell','forced-spell'].includes(p.mode)||!['CLEAR','LOW','MASKED','DEEP','CONTROL','ULTRASONIC','NEAR'].includes(p.variant))throw new Error(t("Nieprawidłowy tryb projektu."));
   numberIn(p.duration,5,3600,t("czas"));numberIn(p.targetLufs,-36,-14,t("głośność"));
   if(!p.background||!['brown','pink','none','file'].includes(p.background.kind))throw new Error(t("Nieprawidłowe tło."));
   numberIn(p.background.gainDb,-60,0,t("poziom tła"));
@@ -146,7 +149,7 @@ export function validateProject(input:unknown):Project {
   if(p.comparisons!==undefined){if(!Array.isArray(p.comparisons)||p.comparisons.length>1000)throw new Error(t("Nieprawidłowe porównania."));for(const c of p.comparisons){dateIn(c.createdAt,t("porównanie"));textIn(c.id,100,t("identyfikator porównania"));textIn(c.firstId,100,t("plik A"));textIn(c.secondId,100,t("plik B"));for(const n of [c.firstVotes,c.secondVotes,c.ties]){numberIn(n,0,10,t("głosy"));if(!Number.isInteger(n))throw new Error(t("Nieprawidłowa liczba prób."));}if(c.firstVotes+c.secondVotes+c.ties!==10)throw new Error(t("Porównanie musi mieć 10 prób."));}}
   if(!Array.isArray(p.exports))p.exports=[];
   if(p.exports.length>2000)throw new Error(t("Zbyt wiele eksportów."));
-  for(const r of p.exports){dateIn(r.createdAt,t("eksport"));textIn(r.id,100,t("identyfikator eksportu"));textIn(r.path,2000,t("plik eksportu"));textIn(r.url,2500,t("adres eksportu"));numberIn(r.duration,0,3600,t("długość eksportu"));if(!['wav','mp3','flac'].includes(r.format)||!['CLEAR','LOW','MASKED','DEEP','CONTROL'].includes(r.variant)||!r.metrics)throw new Error(t("Nieprawidłowy eksport."));for(const v of [r.metrics.integratedLufs,r.metrics.truePeakDbtp,r.metrics.correlation])if(v!==null&&(typeof v!=='number'||!Number.isFinite(v)))throw new Error(t("Nieprawidłowy pomiar."));if(!Array.isArray(r.checks)||r.checks.length>40)throw new Error(t("Nieprawidłowy raport."));for(const c of r.checks){textIn(c.label,500,t("kontrola"));textIn(c.detail,5000,t("opis kontroli"));if(!['pass','warn','fail'].includes(c.status))throw new Error(t("Nieprawidłowy wynik kontroli."));}}
+  for(const r of p.exports){dateIn(r.createdAt,t("eksport"));textIn(r.id,100,t("identyfikator eksportu"));textIn(r.path,2000,t("plik eksportu"));textIn(r.url,2500,t("adres eksportu"));numberIn(r.duration,0,3600,t("długość eksportu"));if(!['wav','mp3','flac'].includes(r.format)||!['CLEAR','LOW','MASKED','DEEP','CONTROL','ULTRASONIC','NEAR'].includes(r.variant)||!r.metrics)throw new Error(t("Nieprawidłowy eksport."));for(const v of [r.metrics.integratedLufs,r.metrics.truePeakDbtp,r.metrics.correlation])if(v!==null&&(typeof v!=='number'||!Number.isFinite(v)))throw new Error(t("Nieprawidłowy pomiar."));if(!Array.isArray(r.checks)||r.checks.length>40)throw new Error(t("Nieprawidłowy raport."));for(const c of r.checks){textIn(c.label,500,t("kontrola"));textIn(c.detail,5000,t("opis kontroli"));if(!['pass','warn','fail'].includes(c.status))throw new Error(t("Nieprawidłowy wynik kontroli."));}}
   return p;
 }
 export function migrateProject(input:unknown):Project {

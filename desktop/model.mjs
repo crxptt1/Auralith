@@ -1,4 +1,7 @@
 import { t, getLocale } from './i18n.mjs';
+export function highFrequencyProfile(variant) {
+    return variant === 'ULTRASONIC' ? { carrierHz: 25000, sampleRate: 96000, lowHz: 22000, highHz: 28000 } : variant === 'NEAR' ? { carrierHz: 20000, sampleRate: 48000, lowHz: 17000, highHz: 23000 } : null;
+}
 export const uid = () => crypto.randomUUID();
 export const modeLabels = { classic: 'Classic', forced: 'Forced', spell: 'Spell', 'forced-spell': 'Forced + Spell' };
 export const roleLabels = { get A() { return t('Tożsamość'); }, get B() { return t('Intencja'); }, get C() { return t('Wyobrażenie'); } };
@@ -121,7 +124,7 @@ export function validateProject(input) {
     textIn(p.name, 200, t("nazwa"));
     if (!p.name.trim())
         throw new Error(t("Nadaj projektowi nazwę."));
-    if (!['classic', 'forced', 'spell', 'forced-spell'].includes(p.mode) || !['CLEAR', 'LOW', 'MASKED', 'DEEP', 'CONTROL'].includes(p.variant))
+    if (!['classic', 'forced', 'spell', 'forced-spell'].includes(p.mode) || !['CLEAR', 'LOW', 'MASKED', 'DEEP', 'CONTROL', 'ULTRASONIC', 'NEAR'].includes(p.variant))
         throw new Error(t("Nieprawidłowy tryb projektu."));
     numberIn(p.duration, 5, 3600, t("czas"));
     numberIn(p.targetLufs, -36, -14, t("głośność"));
@@ -199,7 +202,7 @@ export function validateProject(input) {
         textIn(r.path, 2000, t("plik eksportu"));
         textIn(r.url, 2500, t("adres eksportu"));
         numberIn(r.duration, 0, 3600, t("długość eksportu"));
-        if (!['wav', 'mp3', 'flac'].includes(r.format) || !['CLEAR', 'LOW', 'MASKED', 'DEEP', 'CONTROL'].includes(r.variant) || !r.metrics)
+        if (!['wav', 'mp3', 'flac'].includes(r.format) || !['CLEAR', 'LOW', 'MASKED', 'DEEP', 'CONTROL', 'ULTRASONIC', 'NEAR'].includes(r.variant) || !r.metrics)
             throw new Error(t("Nieprawidłowy eksport."));
         for (const v of [r.metrics.integratedLufs, r.metrics.truePeakDbtp, r.metrics.correlation])
             if (v !== null && (typeof v !== 'number' || !Number.isFinite(v)))

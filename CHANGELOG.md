@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.5 — 2026-11-13
+
+- Added Ultrasonic 25 kHz voice modulation with 24-bit / 96 kHz WAV and FLAC exports.
+- Added Near-ultrasonic 20 kHz modulation for 48 kHz outputs (approximately 17–23 kHz; potentially audible to some listeners).
+- Band-limited speech, antialias resampling, conservative vocal/mix peak ceilings and full-band QC; no ultrasonic LUFS boosting or MP3 export.
+- Studio and export choices, saved-project compatibility, PL/EN playback notes and separate high-frequency exports. Existing audible-profile processing and batches remain unchanged.
+- Sample-rate compatibility does not guarantee transducer bandwidth or effectiveness; hardware playback still needs validation.
+
 ## 2.2.4 — 2026-10-17
 
 - Restore online neural voices after Microsoft's speech endpoint change caused HTTP 403 errors.

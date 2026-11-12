@@ -4,6 +4,8 @@ import path from 'node:path';
 import {openSync,closeSync,createReadStream} from 'node:fs';
 import {readFile} from 'node:fs/promises';
 import {applyDeepMask} from './deepmask.mjs';
+import {highFrequencyProfile} from './model.mjs';
+import {modulateVoices,fullBandPeak} from './ultrasonic.mjs';
 
 const abortError=()=>Object.assign(new Error('Renderowanie anulowane.'),{name:'AbortError'});
 const finite=(value,min,max,label)=>{if(typeof value!=='number'||!Number.isFinite(value)||value<min||value>max)throw new Error(`Nieprawidłowa wartość: ${label}.`);};
@@ -68,9 +70,9 @@ export function createAudioEngine({ffmpegPath,workDir}) {
   }});
   const max=Math.max(...peaks);return max?peaks.map(p=>p/max):peaks;
  }
- async function stereoQc(file,signal){
+ async function stereoQc(file,signal,rate=12000){
   let count=0,sumL=0,sumR=0,sumLL=0,sumRR=0,sumLR=0,carry=Buffer.alloc(0);
-  await run(['-v','error','-i',file,'-map','0:a:0','-ac','2','-ar','12000','-f','f32le','pipe:1'],{signal,onData:chunk=>{
+  await run(['-v','error','-i',file,'-map','0:a:0','-ac','2','-ar',String(rate),'-f','f32le','pipe:1'],{signal,onData:chunk=>{
    if(signal?.aborted)throw abortError();
    const data=Buffer.concat([carry,chunk]),end=data.length-data.length%8;
    for(let i=0;i<end;i+=8){const l=data.readFloatLE(i),r=data.readFloatLE(i+4);count++;sumL+=l;sumR+=r;sumLL+=l*l;sumRR+=r*r;sumLR+=l*r;}
@@ -86,7 +88,8 @@ export function createAudioEngine({ffmpegPath,workDir}) {
  function validate(r) {
   if(!r||typeof r.outputPath!=='string'||!r.outputPath.trim())throw new Error('Brak ścieżki eksportu.');
   finite(r.duration,5,3600,'czas');finite(r.targetLufs,-36,-14,'LUFS');
-  if(!['CLEAR','LOW','MASKED','DEEP','CONTROL'].includes(r.variant)||!['wav','flac','mp3'].includes(r.format))throw new Error('Nieobsługiwany wariant lub format.');
+  if(!['CLEAR','LOW','MASKED','DEEP','CONTROL','ULTRASONIC','NEAR'].includes(r.variant)||!['wav','flac','mp3'].includes(r.format))throw new Error('Nieobsługiwany wariant lub format.');
+  if(highFrequencyProfile(r.variant)&&r.format==='mp3')throw new Error('Ultrasonic i Near-ultrasonic wymagają WAV lub FLAC. MP3 usuwa wysokie częstotliwości.');
   if(!r.background||!['none','brown','pink','file'].includes(r.background.kind))throw new Error('Nieprawidłowe tło.');
   finite(r.background.gainDb,-60,0,'wzmocnienie tła');
   for(const key of ['muted','solo','reverse'])if(r.background[key]!==undefined&&typeof r.background[key]!=='boolean')throw new Error(`Nieprawidłowe pole tła ${key}.`);
@@ -119,7 +122,8 @@ export function createAudioEngine({ffmpegPath,workDir}) {
   await mkdir(workDir,{recursive:true});
   const job=await mkdtemp(path.join(workDir,'render-'));
   let temporary;
-  const pcm=['-ar','48000','-ac','2','-c:a','pcm_f32le'];
+  const profile=highFrequencyProfile(r.variant),sampleRate=profile?.sampleRate??48000;
+  const pcm=['-ar',String(sampleRate),'-ac','2','-c:a','pcm_f32le'];
   const edge=duration=>`afade=t=in:d=0.015,afade=t=out:st=${Math.max(0,duration-0.025)}:d=0.025`;
   const exec=args=>run(['-y',...args],{signal});
   const loopFile=async(file,name)=>{
@@ -180,14 +184,19 @@ export function createAudioEngine({ffmpegPath,workDir}) {
    const nominalBackgroundBand=backgroundNominal?await measure(backgroundNominal,true):null;
    // volumedetect rounds digital silence to -91 dB. Reject it explicitly.
    const voiceAudible=voiceBand!==null&&voiceBand>-90;
+   // Rejected high-frequency voices must not fall through as unmodulated speech.
+   if(profile&&!voiceAudible)voices=undefined;
    const backgroundAudible=backgroundBand!==null&&backgroundBand>-90;
    if(r.variant==='DEEP'&&!backgroundAudible)throw new Error('Deep Mask wymaga mierzalnego tła w paśmie mowy.');
    if(!voiceAudible&&!backgroundAudible)throw new Error('Miks jest pusty lub zawiera wyłącznie ciszę.');
-   const relative={CLEAR:-6,LOW:-15,MASKED:-25,DEEP:-32,CONTROL:0}[r.variant];
+   const relative={CLEAR:-6,LOW:-15,MASKED:-25,DEEP:-32,CONTROL:0,ULTRASONIC:0,NEAR:0}[r.variant];
    // Reference uses unity layer gains and nominal -18 dB background. User gains remain independent.
    const gain=nominalVoiceBand!==null&&nominalVoiceBand>-90?(nominalBackgroundBand!==null&&nominalBackgroundBand>-90?nominalBackgroundBand:-24)+relative-nominalVoiceBand:0;
    let voiceBackgroundDb=null,deepMask=null;
-   if(voiceAudible){
+   if(profile&&voiceAudible){
+    emit('Modulacja wysokoczęstotliwościowa',0.43);
+    voices=await modulateVoices({voices,nominal:voicesNominal,profile,job,exec,pcm});
+   }else if(voiceAudible){
     const calibrated=path.join(job,'voices-calibrated.wav');
     await exec(['-i',voices,'-af',`volume=${gain}dB`,...pcm,calibrated]);voices=calibrated;
     if(r.variant==='DEEP'){
@@ -204,30 +213,36 @@ export function createAudioEngine({ffmpegPath,workDir}) {
    let filters=inputFiles.map((_,i)=>`[${i}:a]anull[m${i}]`).join(';');
    filters+=`;${inputFiles.map((_,i)=>`[m${i}]`).join('')}amix=inputs=${inputFiles.length}:normalize=0:duration=longest,${masterFade}[mix]`;
    await exec([...inputFiles.flatMap(file=>['-i',file]),'-filter_complex',filters,'-map','[mix]','-t',String(r.duration),...pcm,mix]);
-   emit('Pomiar głośności · przebieg 1/2',0.55);
-   const peakTarget=r.format==='mp3'?-2:-1;
+   emit(profile?'Pomiar szczytów pełnego pasma':'Pomiar głośności · przebieg 1/2',0.55);
+   const peakTarget=profile?-6:r.format==='mp3'?-2:-1;
    const normalizer=`loudnorm=I=${r.targetLufs}:TP=${peakTarget}:LRA=11`;
-   const first=loudness(await exec(['-i',mix,'-af',`${normalizer}:print_format=json`,'-f','null','-']));
-   if(number(first.input_i)===null)throw new Error('Nie można znormalizować ciszy.');
+   const first=profile?null:loudness(await exec(['-i',mix,'-af',`${normalizer}:print_format=json`,'-f','null','-']));
+   if(first&&number(first.input_i)===null)throw new Error('Nie można znormalizować ciszy.');
    emit('Eksport · przebieg 2/2',0.72);
    await mkdir(path.dirname(path.resolve(r.outputPath)),{recursive:true});
    temporary=path.join(path.dirname(path.resolve(r.outputPath)),`.auralith-${path.basename(job)}.${r.format}`);
    const codec=r.format==='wav'?['-c:a','pcm_s24le']:r.format==='flac'?['-c:a','flac','-sample_fmt','s32','-bits_per_raw_sample','24']:['-c:a','libmp3lame','-b:a','320k'];
-   await exec(['-i',mix,'-af',`${normalizer}:measured_I=${first.input_i}:measured_TP=${first.input_tp}:measured_LRA=${first.input_lra}:measured_thresh=${first.input_thresh}:offset=${first.target_offset}:linear=true:print_format=json`,'-ar','48000','-ac','2','-t',String(r.duration),...codec,'-f',r.format,temporary]);
+   // Never boost high-frequency energy to chase a perceptual loudness target.
+   const mastering=profile?`volume=${Math.min(0,peakTarget-await fullBandPeak(mix,exec))}dB`:`${normalizer}:measured_I=${first.input_i}:measured_TP=${first.input_tp}:measured_LRA=${first.input_lra}:measured_thresh=${first.input_thresh}:offset=${first.target_offset}:linear=true:print_format=json`;
+   await exec(['-i',mix,'-af',mastering,'-ar',String(sampleRate),'-ac','2','-t',String(r.duration),...codec,'-f',r.format,temporary]);
    emit('Kontrola wyeksportowanego pliku',0.9);
    const metadata=await probeInternal(temporary,signal);
    const qc=loudness(await exec(['-i',temporary,'-af',`${normalizer}:print_format=json`,'-f','null','-']));
-   const integratedLufs=number(qc.input_i),truePeakDbtp=number(qc.input_tp);
-   const stereo=await stereoQc(temporary,signal);
-   if(integratedLufs===null||truePeakDbtp===null)throw new Error('Eksport nie zawiera mierzalnego sygnału.');
+   const integratedLufs=number(qc.input_i),truePeakDbtp=profile?await fullBandPeak(temporary,exec):number(qc.input_tp);
+   const stereo=await stereoQc(temporary,signal,profile?sampleRate:12000);
+   if((!profile&&integratedLufs===null)||truePeakDbtp===null)throw new Error('Eksport nie zawiera mierzalnego sygnału.');
    const checks=[
     ...(deepMask?[{label:'Deep Mask · obwiednia',status:'pass',detail:`Analiza co ${deepMask.windowMs} ms w 3 pasmach, osobno L/R; pułap -32 dB RMS względem rzeczywistego tła przed masteringiem. ${deepMask.silentWindows} okien wyciszonych. Pomiar techniczny, bez gwarancji niesłyszalności lub skuteczności.`}]:[]),
-    {label:'Głośność z pliku',status:Math.abs(integratedLufs-r.targetLufs)<=1?'pass':'warn',detail:`${integratedLufs.toFixed(1)} LUFS-I; cel ${r.targetLufs}.`},
+    ...(profile?[
+     {label:'Modulacja wysokoczęstotliwościowa',status:voiceAudible?'pass':'warn',detail:voiceAudible?`DSB-SC · ${profile.carrierHz} Hz · ${profile.lowHz}–${profile.highHz} Hz · ${sampleRate} Hz / 24-bit. Głos 300–3000 Hz przeniesiony w dwa pasma boczne; bez pustej nośnej.`:'Brak aktywnych głosów; wyłącznie tło.'},
+     {label:'Głośność z pliku',status:'pass',detail:'LUFS wyłącznie informacyjnie. Bez normalizacji LUFS; głosy ≤ −24 dBFS, miks ≤ −6 dBTP; wyłącznie ściszanie.'},
+     {label:'Odtwarzanie wysokich częstotliwości',status:'warn',detail:profile.carrierHz===25000?'Wymagany tor 96 kHz i przetwornik obsługujący 22–28 kHz. Resampling do 48 kHz usuwa część sygnału. Nie zwiększaj głośności, gdy nic nie słychać.':'Near-ultrasonic 17–23 kHz: plik dla toru 48 kHz; część osób może go słyszeć. Pasmo głośnika nie jest gwarantowane. Nie zwiększaj głośności, gdy nic nie słychać.'}
+    ]:[{label:'Głośność z pliku',status:Math.abs(integratedLufs-r.targetLufs)<=1?'pass':'warn',detail:`${integratedLufs.toFixed(1)} LUFS-I; cel ${r.targetLufs}.`}]),
     {label:'Szczyt rzeczywisty',status:truePeakDbtp<=peakTarget+0.2?'pass':'warn',detail:`${truePeakDbtp.toFixed(2)} dBTP; pomiar nadpróbkowany FFmpeg.`},
-    {label:'Format pliku',status:metadata.sampleRate===48000&&metadata.channels===2&&(r.format==='mp3'||metadata.bits===24)?'pass':'fail',detail:`${metadata.sampleRate} Hz · ${metadata.channels} kanały · ${metadata.bits?metadata.bits+' bit':'stratny kodek'}.`},
+    {label:'Format pliku',status:metadata.sampleRate===sampleRate&&metadata.channels===2&&(r.format==='mp3'||metadata.bits===24)?'pass':'fail',detail:`${metadata.sampleRate} Hz · ${metadata.channels} kanały · ${metadata.bits?metadata.bits+' bit':'stratny kodek'}.`},
     {label:'Długość',status:Math.abs(metadata.duration-r.duration)<0.1?'pass':'fail',detail:`${metadata.duration.toFixed(3)} s.`},
-    {label:'Poziom głosu',status:voiceBackgroundDb!==null||!voices||r.variant==='CONTROL'?'pass':'warn',detail:voiceBackgroundDb!==null?`Zmierzono ${voiceBackgroundDb.toFixed(1)} dB głos/tło w 300–4000 Hz po suwakach i modulacji tła, przed masteringiem. Profil bazowy ${relative} dB; końcowy limiter może zmienić relację.`:r.variant==='CONTROL'?'Wyłącznie tło; głosy i modulacja wyłączone.':!voices?'Brak aktywnych głosów; wyłącznie tło.':'Brak mierzalnego odniesienia głos/tło; zastosowano poziom odniesienia głosu.'},
-    {label:'Zgodność mono',status:stereo.monoLossDb!==null&&stereo.monoLossDb<=3.1?'pass':'warn',detail:`Pomiar eksportu, próbkowanie 12 kHz (pasmo do 6 kHz): korelacja ${stereo.correlation===null?'nieokreślona (cichy kanał)':stereo.correlation.toFixed(3)}; ${stereo.monoCancelled?'całkowite wygaszenie po zsumowaniu':stereo.monoLossDb===null?'strata mono nieokreślona':`strata mono ${stereo.monoLossDb.toFixed(2)} dB`}. Mono=(L+R)/2, odniesienie: średnia energia kanałów.`},
+    ...(!profile?[{label:'Poziom głosu',status:voiceBackgroundDb!==null||!voices||r.variant==='CONTROL'?'pass':'warn',detail:voiceBackgroundDb!==null?`Zmierzono ${voiceBackgroundDb.toFixed(1)} dB głos/tło w 300–4000 Hz po suwakach i modulacji tła, przed masteringiem. Profil bazowy ${relative} dB; końcowy limiter może zmienić relację.`:r.variant==='CONTROL'?'Wyłącznie tło; głosy i modulacja wyłączone.':!voices?'Brak aktywnych głosów; wyłącznie tło.':'Brak mierzalnego odniesienia głos/tło; zastosowano poziom odniesienia głosu.'}]:[]),
+    {label:'Zgodność mono',status:stereo.monoLossDb!==null&&stereo.monoLossDb<=3.1?'pass':'warn',detail:`${profile?`Full-band QC · ${sampleRate} Hz`:'Pomiar eksportu, próbkowanie 12 kHz (pasmo do 6 kHz)'}: korelacja ${stereo.correlation===null?'nieokreślona (cichy kanał)':stereo.correlation.toFixed(3)}; ${stereo.monoCancelled?'całkowite wygaszenie po zsumowaniu':stereo.monoLossDb===null?'strata mono nieokreślona':`strata mono ${stereo.monoLossDb.toFixed(2)} dB`}. Mono=(L+R)/2, odniesienie: średnia energia kanałów.`},
     {label:'Łączenia pętli',status:'pass',detail:'Importowane źródła: 20 ms crossfade między kopiami oraz krótkie obwiednie na granicach cyklu. Ciche dołki na granicach pozostają możliwe.'}
    ];
    if(checks.some(c=>c.status==='fail'))throw new Error('Eksport nie spełnia wymagań formatu lub długości.');

@@ -29,6 +29,21 @@ If `latest.yml` is absent, do not write it by hand: verify `build.publish` and r
 
 The current app binaries are unsigned; do not describe checksum verification as publisher-signature verification. If you introduce signing later, configure it consistently for subsequent releases and test that migration.
 
+## Low-resource Windows packaging
+
+electron-builder 26.15.3 uses 7-Zip level 9 for 7z payloads even when the project compression setting is `normal`. On an interactive machine, prefer level 1 and cap the builder process to two logical CPUs at BelowNormal priority; child compressors inherit both settings. This changes package size/compression time, not application audio quality.
+
+```powershell
+$env:ELECTRON_BUILDER_COMPRESSION_LEVEL='1'
+$p=Start-Process -FilePath (Get-Command node.exe).Source -ArgumentList 'node_modules/electron-builder/cli.js --win portable nsis --publish never' -NoNewWindow -PassThru
+$p.ProcessorAffinity=[IntPtr]3
+$p.PriorityClass='BelowNormal'
+$p.WaitForExit()
+if($p.ExitCode -ne 0){throw "Packaging failed: $($p.ExitCode)"}
+```
+
+Do not run the audio test suite concurrently with packaging on the operator's active desktop. If packaging was interrupted, remove only the build's own incomplete `.nsis.7z` payload before retrying; do not delete projects or recordings. A verified `release/win-unpacked` may be reused with `--prepackaged release/win-unpacked`.
+
 ## Upstream references
 
 - [electron-builder v26 auto-update guide](https://www.electron.build/v26/docs/features/auto-update/)

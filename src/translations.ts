@@ -1,4 +1,13 @@
 export const english:Record<string,string>={
+"Modulacja wysokoczęstotliwościowa":"High-frequency modulation",
+"Pomiar szczytów pełnego pasma":"Measuring full-band peaks",
+"Odtwarzanie wysokich częstotliwości":"High-frequency playback",
+"Brak mierzalnego sygnału wysokoczęstotliwościowego.":"No measurable high-frequency signal.",
+"Ultrasonic i Near-ultrasonic wymagają WAV lub FLAC. MP3 usuwa wysokie częstotliwości.":"Ultrasonic and Near-ultrasonic require WAV or FLAC. MP3 removes high frequencies.",
+"DSB-SC · {0} Hz · {1}–{2} Hz · {3} Hz / 24-bit. Głos 300–3000 Hz przeniesiony w dwa pasma boczne; bez pustej nośnej.":"DSB-SC · {0} Hz · {1}–{2} Hz · {3} Hz / 24-bit. Speech at 300–3000 Hz shifted into two sidebands; no empty carrier.",
+"LUFS wyłącznie informacyjnie. Bez normalizacji LUFS; głosy ≤ −24 dBFS, miks ≤ −6 dBTP; wyłącznie ściszanie.":"LUFS is informational only. No LUFS normalization; voices ≤ −24 dBFS, mix ≤ −6 dBTP; attenuation only.",
+"Wymagany tor 96 kHz i przetwornik obsługujący 22–28 kHz. Resampling do 48 kHz usuwa część sygnału. Nie zwiększaj głośności, gdy nic nie słychać.":"Requires a 96 kHz output path and a transducer supporting 22–28 kHz. Resampling to 48 kHz removes part of the signal. Do not raise volume to hear it.",
+"Near-ultrasonic 17–23 kHz: plik dla toru 48 kHz; część osób może go słyszeć. Pasmo głośnika nie jest gwarantowane. Nie zwiększaj głośności, gdy nic nie słychać.":"Near-ultrasonic 17–23 kHz: a file for 48 kHz outputs; some people can hear it. Speaker bandwidth is not guaranteed. Do not raise volume to hear it.",
 "Deep Mask wymaga mierzalnego, niewyciszonego tła.":"Deep Mask requires a measurable, unmuted background.",
 "Deep Mask wymaga mierzalnego tła w paśmie mowy.":"Deep Mask requires measurable background in the speech frequency range.",
 "Deep Mask · analiza pasm i obwiedni":"Deep Mask · band and envelope analysis",

@@ -6,6 +6,7 @@ import {Toggle} from './Primitives';
 import './updates.css';
 
 const notes=[
+ {version:'2.2.5',en:['Ultrasonic voice modulation at 25 kHz with 96 kHz WAV/FLAC output.','Near-ultrasonic 20 kHz profile for 48 kHz outputs; some people can hear its 17–23 kHz band.','Conservative high-frequency peak limits, no LUFS boosting, full-band technical checks and playback compatibility notes.'],pl:['Modulacja afirmacji Ultrasonic 25 kHz z eksportem WAV/FLAC 96 kHz.','Profil Near-ultrasonic 20 kHz dla wyjść 48 kHz; część osób może słyszeć jego pasmo 17–23 kHz.','Ograniczone poziomy wysokich częstotliwości, bez podbijania LUFS, kontrola pełnego pasma i informacje o zgodności odsłuchu.']},
  {"version":"2.2.4","en":["Online neural voices work again after Microsoft's speech service connection changed."],"pl":["Głosy neuronowe online znów działają po zmianie sposobu połączenia z usługą głosową Microsoft."]},
  {"version":"2.2.3","en":["Export your affirmation script as Markdown or plain TXT, preserving Identity, Intention and Imagination roles."],"pl":["Eksportuj skrypt afirmacji do Markdown lub zwykłego TXT, zachowując role Tożsamość, Intencja i Wyobrażenie."]},
  {"version":"2.2.2","en":["Waveforms now use a thin, smoothed contour for a cleaner studio timeline."],"pl":["Waveformy mają teraz cienki, wygładzony kontur, dzięki czemu oś czasu wygląda czyściej."]},
